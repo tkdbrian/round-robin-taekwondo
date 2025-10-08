@@ -789,6 +789,20 @@ header h1 i {
     border-left: 5px solid #f39c12;
 }
 
+.fight-item.tiebreaker {
+    border-left: 5px solid #e74c3c;
+    background: linear-gradient(135deg, #fff5f5, #fed7d7);
+}
+
+.tiebreaker-label {
+    background: linear-gradient(145deg, #e74c3c, #c0392b);
+    color: white;
+    font-weight: bold;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+}
+
 .fight-details {
     display: flex;
     flex-direction: column;
