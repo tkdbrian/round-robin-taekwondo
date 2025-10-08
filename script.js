@@ -186,10 +186,11 @@ class RoundRobinTournament {
     generateFightSchedule() {
         this.fights = [];
         
-        // Generar todas las combinaciones posibles (Round Robin) según el número de competidores
+        // Generar todas las combinaciones posibles primero
+        const allFights = [];
         for (let i = 0; i < this.competitors.length; i++) {
             for (let j = i + 1; j < this.competitors.length; j++) {
-                this.fights.push({
+                allFights.push({
                     fighter1Index: i,
                     fighter2Index: j,
                     completed: false,
@@ -201,6 +202,144 @@ class RoundRobinTournament {
                         judge4: null
                     }
                 });
+            }
+        }
+        
+        // Optimizar el orden según el número de competidores
+        if (this.competitors.length === 3) {
+            this.fights = this.optimizeScheduleFor3Fighters(allFights);
+        } else if (this.competitors.length === 4) {
+            this.fights = this.optimizeScheduleFor4Fighters(allFights);
+        } else {
+            this.fights = this.optimizeScheduleGeneral(allFights);
+        }
+    }
+
+    optimizeScheduleFor3Fighters(fights) {
+        // Para 3 luchadores: A vs B, luego el perdedor pelea vs C
+        // Esto requiere determinar dinámicamente, por ahora usamos orden básico optimizado
+        // Orden: [A vs B], [A vs C], [B vs C] pero se puede reordenar dinámicamente
+        return fights; // Se optimizará con lógica dinámica después de cada pelea
+    }
+
+    optimizeScheduleFor4Fighters(fights) {
+        // Para 4 luchadores: optimizar para evitar peleas consecutivas
+        // Orden ideal: [A vs B], [C vs D], [A vs C], [B vs D], [A vs D], [B vs C]
+        const optimized = [];
+        const fighters = [0, 1, 2, 3];
+        
+        // Ronda 1: emparejamientos iniciales
+        optimized.push(this.findFight(fights, 0, 1)); // A vs B
+        optimized.push(this.findFight(fights, 2, 3)); // C vs D
+        
+        // Ronda 2: cruzar grupos
+        optimized.push(this.findFight(fights, 0, 2)); // A vs C
+        optimized.push(this.findFight(fights, 1, 3)); // B vs D
+        
+        // Ronda 3: completar emparejamientos
+        optimized.push(this.findFight(fights, 0, 3)); // A vs D
+        optimized.push(this.findFight(fights, 1, 2)); // B vs C
+        
+        return optimized.filter(f => f !== null);
+    }
+
+    optimizeScheduleGeneral(fights) {
+        // Para 5+ luchadores: algoritmo general para minimizar peleas consecutivas
+        const optimized = [];
+        const available = [...fights];
+        const lastFightTime = {}; // Rastrea cuándo luchó cada competidor por última vez
+        
+        // Inicializar tiempos
+        for (let i = 0; i < this.competitors.length; i++) {
+            lastFightTime[i] = -2; // Permitir que todos puedan luchar al principio
+        }
+        
+        while (available.length > 0) {
+            let bestFight = null;
+            let bestScore = -1;
+            let bestIndex = -1;
+            
+            // Buscar la mejor pelea (la que maximiza el descanso)
+            for (let i = 0; i < available.length; i++) {
+                const fight = available[i];
+                const f1LastFight = lastFightTime[fight.fighter1Index];
+                const f2LastFight = lastFightTime[fight.fighter2Index];
+                const currentTime = optimized.length;
+                
+                // Calcular score: cuanto más tiempo desde la última pelea, mejor
+                const score = (currentTime - f1LastFight) + (currentTime - f2LastFight);
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestFight = fight;
+                    bestIndex = i;
+                }
+            }
+            
+            // Agregar la mejor pelea y actualizar tiempos
+            if (bestFight) {
+                optimized.push(bestFight);
+                lastFightTime[bestFight.fighter1Index] = optimized.length - 1;
+                lastFightTime[bestFight.fighter2Index] = optimized.length - 1;
+                available.splice(bestIndex, 1);
+            }
+        }
+        
+        return optimized;
+    }
+
+    findFight(fights, f1, f2) {
+        return fights.find(f => 
+            (f.fighter1Index === f1 && f.fighter2Index === f2) ||
+            (f.fighter1Index === f2 && f.fighter2Index === f1)
+        ) || null;
+    }
+
+    reorderRemainingFightsFor3(completedFight, fighter1, fighter2, votes) {
+        // Determinar quién ganó la pelea
+        let winnerIndex, loserIndex;
+        if (votes.fighter1 > votes.fighter2 && votes.fighter1 > votes.tie) {
+            winnerIndex = completedFight.fighter1Index;
+            loserIndex = completedFight.fighter2Index;
+        } else if (votes.fighter2 > votes.fighter1 && votes.fighter2 > votes.tie) {
+            winnerIndex = completedFight.fighter2Index;
+            loserIndex = completedFight.fighter1Index;
+        } else {
+            // En caso de empate, no reordenar
+            return;
+        }
+
+        // Encontrar al tercer competidor
+        const allIndices = [0, 1, 2];
+        const fightingIndices = [completedFight.fighter1Index, completedFight.fighter2Index];
+        const thirdFighterIndex = allIndices.find(i => !fightingIndices.includes(i));
+        
+        if (thirdFighterIndex === undefined) return;
+
+        // Obtener peleas restantes (no completadas)
+        const remainingFights = this.fights.slice(this.currentFightIndex).filter(f => !f.completed);
+        
+        if (remainingFights.length === 0) return;
+
+        // Buscar la pelea que incluye al perdedor y al tercer luchador
+        const loserVsThirdFight = remainingFights.find(f => 
+            (f.fighter1Index === loserIndex && f.fighter2Index === thirdFighterIndex) ||
+            (f.fighter1Index === thirdFighterIndex && f.fighter2Index === loserIndex)
+        );
+
+        if (loserVsThirdFight) {
+            // Mover esta pelea al frente para que el ganador descanse
+            const currentIndex = this.fights.indexOf(loserVsThirdFight);
+            if (currentIndex > this.currentFightIndex) {
+                // Intercambiar con la próxima pelea
+                const nextFightIndex = this.currentFightIndex;
+                [this.fights[nextFightIndex], this.fights[currentIndex]] = 
+                [this.fights[currentIndex], this.fights[nextFightIndex]];
+                
+                const winner = this.competitors[winnerIndex];
+                const loser = this.competitors[loserIndex];
+                const third = this.competitors[thirdFighterIndex];
+                console.log(`🔄 Reordenando: ${loser.name} peleará próximo vs ${third.name} (${winner.name} descansa)`);
             }
         }
     }
@@ -584,6 +723,11 @@ class RoundRobinTournament {
 
         // Avanzar a siguiente pelea
         this.currentFightIndex++;
+        
+        // Para categorías de 3, reordenar dinámicamente para que el ganador descanse
+        if (this.competitors.length === 3 && this.currentFightIndex < this.fights.length) {
+            this.reorderRemainingFightsFor3(currentFight, fighter1, fighter2, votes);
+        }
         
         // Actualizar displays
         this.updateStandings();
