@@ -1,4 +1,4 @@
-// Sistema Round Robin - Taekwondo
+// Sistema Round Robin - Taekwon-Do
 class RoundRobinTournament {
     constructor() {
         this.competitors = [];
@@ -11,7 +11,16 @@ class RoundRobinTournament {
         this.currentPhase = 'setup'; // setup, groups, final
         this.groupWinners = []; // Ganadores de cada grupo
         
+        // Información de categoría
+        this.categoryInfo = {
+            gender: '',
+            ageFrom: '',
+            ageTo: '',
+            beltCategory: ''
+        };
+        
         this.initializeEventListeners();
+        this.loadFromLocalStorage(); // Cargar datos guardados
     }
 
     initializeEventListeners() {
@@ -37,6 +46,16 @@ class RoundRobinTournament {
         document.getElementById('close-tournament-modal').addEventListener('click', () => this.closeTournamentModal());
         document.getElementById('new-tournament').addEventListener('click', () => this.newTournament());
         document.getElementById('export-results').addEventListener('click', () => this.exportResults());
+        
+        // Manejo de categoría personalizada
+        document.getElementById('belt-category').addEventListener('change', (e) => {
+            const customBelt = document.getElementById('custom-belt');
+            if (e.target.value === 'Personalizada') {
+                customBelt.style.display = 'block';
+            } else {
+                customBelt.style.display = 'none';
+            }
+        });
         
         // Inicializar con 5 competidores por defecto
         this.updateCompetitorInputs(5);
@@ -80,6 +99,32 @@ class RoundRobinTournament {
     }
 
     startTournament() {
+        // Capturar información de categoría
+        this.categoryInfo = {
+            gender: document.getElementById('gender').value,
+            ageFrom: document.getElementById('age-from').value,
+            ageTo: document.getElementById('age-to').value,
+            beltCategory: document.getElementById('belt-category').value === 'Personalizada' 
+                ? document.getElementById('custom-belt-text').value 
+                : document.getElementById('belt-category').value
+        };
+
+        // Validar información de categoría
+        if (!this.categoryInfo.ageFrom || !this.categoryInfo.ageTo) {
+            alert('Por favor, completa el rango de edades.');
+            return;
+        }
+
+        if (parseInt(this.categoryInfo.ageFrom) > parseInt(this.categoryInfo.ageTo)) {
+            alert('La edad "desde" no puede ser mayor que la edad "hasta".');
+            return;
+        }
+
+        if (this.categoryInfo.beltCategory === 'Personalizada' && !document.getElementById('custom-belt-text').value.trim()) {
+            alert('Por favor, especifica la categoría personalizada de cinturones.');
+            return;
+        }
+
         // Obtener nombres de los competidores según la cantidad seleccionada
         const competitorInputs = [];
         for (let i = 1; i <= this.competitorCount; i++) {
@@ -130,6 +175,7 @@ class RoundRobinTournament {
         }
         
         this.initializeStandings();
+        this.saveToLocalStorage(); // Guardar estado inicial
         this.loadCurrentFight();
         this.updateStandings();
         this.updateScheduleDisplay();
@@ -155,6 +201,32 @@ class RoundRobinTournament {
                 });
             }
         }
+    }
+
+    showTournamentInfo() {
+        const tournamentInfo = document.getElementById('tournament-info');
+        const categoryDisplay = document.getElementById('category-display');
+        
+        categoryDisplay.innerHTML = `
+            <div class="category-item">
+                <h4>Género</h4>
+                <span>${this.categoryInfo.gender}</span>
+            </div>
+            <div class="category-item">
+                <h4>Edad</h4>
+                <span>${this.categoryInfo.ageFrom} - ${this.categoryInfo.ageTo} años</span>
+            </div>
+            <div class="category-item">
+                <h4>Cinturones</h4>
+                <span>${this.categoryInfo.beltCategory}</span>
+            </div>
+            <div class="category-item">
+                <h4>Competidores</h4>
+                <span>${this.competitors.length}</span>
+            </div>
+        `;
+        
+        tournamentInfo.style.display = 'block';
     }
 
     loadCurrentFight() {
@@ -351,12 +423,11 @@ class RoundRobinTournament {
         fighter1.judgePoints += votes.fighter1;
         fighter2.judgePoints += votes.fighter2;
 
-        // Calcular puntos totales (solo para desempates)
-        fighter1.totalPoints = fighter1.victoryPoints + fighter1.judgePoints;
-        fighter2.totalPoints = fighter2.victoryPoints + fighter2.judgePoints;
+        // Los puntos totales ya NO se usan - solo victorias y jueces por separado
 
-        // Marcar pelea como completada
+        // Marcar pelea como completada con fecha y hora
         currentFight.completed = true;
+        currentFight.completedAt = new Date(); // Agregar timestamp
         currentFight.judgeVotes = { ...decisions };
 
         // Avanzar a siguiente pelea
@@ -366,6 +437,7 @@ class RoundRobinTournament {
         this.updateStandings();
         this.updateFightHistory();
         this.updateScheduleDisplay();
+        this.saveToLocalStorage(); // Auto-guardar progreso
         
         // Si es sistema de llaves, actualizar brackets
         if (this.competitorCount > 5) {
@@ -409,18 +481,18 @@ class RoundRobinTournament {
         const tbody = document.getElementById('standings-body');
         tbody.innerHTML = '';
 
-        // Ordenar competidores: PRIMERO por puntos de jueces, luego por puntos totales
+        // Ordenar competidores: PRIMERO por victorias, en empate por jueces
         const sortedCompetitors = [...this.competitors].sort((a, b) => {
-            // Primero: El que tiene más puntos de jueces
+            // Primero: El que tiene más victorias (combates ganados)
+            if (b.victoryPoints !== a.victoryPoints) {
+                return b.victoryPoints - a.victoryPoints;
+            }
+            // En caso de empate en victorias: Gana el que tuvo más jueces
             if (b.judgePoints !== a.judgePoints) {
                 return b.judgePoints - a.judgePoints;
             }
-            // En caso de empate: Se suma puntos de victoria + puntos de jueces
-            if (b.totalPoints !== a.totalPoints) {
-                return b.totalPoints - a.totalPoints;
-            }
-            // Si persiste empate, por puntos de victoria
-            return b.victoryPoints - a.victoryPoints;
+            // Si persiste empate total, mantener orden alfabético
+            return a.name.localeCompare(b.name);
         });
 
         sortedCompetitors.forEach((competitor, index) => {
@@ -432,9 +504,8 @@ class RoundRobinTournament {
                 <td>${competitor.wins}</td>
                 <td>${competitor.ties}</td>
                 <td>${competitor.losses}</td>
-                <td>${competitor.victoryPoints}</td>
+                <td><strong style="color: #2ecc71; font-size: 1.2em;">${competitor.victoryPoints}</strong></td>
                 <td><strong style="color: #e74c3c; font-size: 1.2em;">${competitor.judgePoints}</strong></td>
-                <td>${competitor.totalPoints}</td>
             `;
         });
     }
@@ -448,12 +519,21 @@ class RoundRobinTournament {
                 const fighter1 = this.competitors[fight.fighter1Index];
                 const fighter2 = this.competitors[fight.fighter2Index];
                 
+                // Formatear fecha y hora
+                const completedDate = fight.completedAt || new Date();
+                const dateStr = completedDate.toLocaleDateString('es-ES');
+                const timeStr = completedDate.toLocaleTimeString('es-ES', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                
                 const fightItem = document.createElement('div');
                 fightItem.className = 'fight-item completed';
                 fightItem.innerHTML = `
                     <div class="fight-details">
                         <div class="fight-competitors">${fighter1.name} vs ${fighter2.name}</div>
                         <div class="fight-result">Resultado: ${fight.result}</div>
+                        <div class="fight-datetime">📅 ${dateStr} - 🕐 ${timeStr}</div>
                     </div>
                     <div class="fight-number">Pelea ${index + 1}</div>
                 `;
@@ -545,22 +625,22 @@ class RoundRobinTournament {
                                     <tr style="background: #3498db; color: white;">
                                         <th style="padding: 8px;">Pos</th>
                                         <th style="padding: 8px;">Competidor</th>
+                                        <th style="padding: 8px;">Victorias</th>
                                         <th style="padding: 8px;">Pts Jueces</th>
-                                        <th style="padding: 8px;">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     ${bracket.competitors
                                         .sort((a, b) => {
-                                            if (b.judgePoints !== a.judgePoints) return b.judgePoints - a.judgePoints;
-                                            return b.totalPoints - a.totalPoints;
+                                            if (b.victoryPoints !== a.victoryPoints) return b.victoryPoints - a.victoryPoints;
+                                            return b.judgePoints - a.judgePoints;
                                         })
                                         .map((competitor, index) => `
                                             <tr style="border-bottom: 1px solid #ddd; ${index === 0 ? 'background: #27ae60; color: white; font-weight: bold;' : ''}">
                                                 <td style="padding: 8px; text-align: center;">${index + 1}°</td>
                                                 <td style="padding: 8px;">${competitor.name}</td>
+                                                <td style="padding: 8px; text-align: center;"><strong>${competitor.victoryPoints}</strong></td>
                                                 <td style="padding: 8px; text-align: center;">${competitor.judgePoints}</td>
-                                                <td style="padding: 8px; text-align: center;">${competitor.totalPoints}</td>
                                             </tr>
                                         `).join('')}
                                 </tbody>
@@ -572,13 +652,12 @@ class RoundRobinTournament {
         } else {
             // Sistema Round Robin tradicional
             const sortedCompetitors = [...this.competitors].sort((a, b) => {
-                if (b.judgePoints !== a.judgePoints) {
-                    return b.judgePoints - a.judgePoints;
+                // Primero: Por victorias (combates ganados)
+                if (b.victoryPoints !== a.victoryPoints) {
+                    return b.victoryPoints - a.victoryPoints;
                 }
-                if (b.totalPoints !== a.totalPoints) {
-                    return b.totalPoints - a.totalPoints;
-                }
-                return b.victoryPoints - a.victoryPoints;
+                // En empate: Por jueces
+                return b.judgePoints - a.judgePoints;
             });
 
             finalStandings.innerHTML = `
@@ -589,8 +668,8 @@ class RoundRobinTournament {
                             <tr style="background: #3498db; color: white;">
                                 <th style="padding: 10px;">Pos</th>
                                 <th style="padding: 10px;">Competidor</th>
+                                <th style="padding: 10px;">Victorias</th>
                                 <th style="padding: 10px;">Pts Jueces</th>
-                                <th style="padding: 10px;">Pts Total</th>
                                 <th style="padding: 10px;">G-E-P</th>
                             </tr>
                         </thead>
@@ -599,8 +678,8 @@ class RoundRobinTournament {
                                 <tr style="border-bottom: 1px solid #ddd; ${index === 0 ? 'background: #f1c40f; font-weight: bold;' : ''}">
                                     <td style="padding: 10px; text-align: center;">${index + 1}°</td>
                                     <td style="padding: 10px;">${competitor.name}</td>
-                                    <td style="padding: 10px; text-align: center;"><strong>${competitor.judgePoints}</strong></td>
-                                    <td style="padding: 10px; text-align: center;">${competitor.totalPoints}</td>
+                                    <td style="padding: 10px; text-align: center;"><strong>${competitor.victoryPoints}</strong></td>
+                                    <td style="padding: 10px; text-align: center;">${competitor.judgePoints}</td>
                                     <td style="padding: 10px; text-align: center;">${competitor.wins}-${competitor.ties}-${competitor.losses}</td>
                                 </tr>
                             `).join('')}
@@ -618,18 +697,48 @@ class RoundRobinTournament {
     }
 
     newTournament() {
+        // Confirmar antes de limpiar todo
+        if (this.competitors.length > 0) {
+            const confirmMsg = `⚠️ LIMPIAR TODO\n\n` +
+                `Esto borrará completamente:\n` +
+                `• Todos los competidores\n` +
+                `• Todos los combates realizados\n` +
+                `• El historial completo\n` +
+                `• Los datos guardados\n\n` +
+                `¿Estás seguro de que quieres empezar un torneo completamente nuevo?`;
+            
+            if (!confirm(confirmMsg)) {
+                return; // No hacer nada si cancela
+            }
+        }
+        
         // Reset completo
         this.competitors = [];
         this.fights = [];
         this.currentFightIndex = 0;
         this.judgeDecisions = {};
         this.competitorCount = 5;
+        this.brackets = [];
+        this.currentPhase = 'setup';
+        this.groupWinners = [];
+        this.categoryInfo = {
+            gender: '',
+            ageFrom: '',
+            ageTo: '',
+            beltCategory: ''
+        };
+        
+        // Limpiar localStorage
+        localStorage.removeItem('taekwondo_tournament');
         
         // Limpiar inputs
         document.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
         
-        // Resetear selector
+        // Resetear selectores
         document.getElementById('competitor-count').value = '5';
+        document.getElementById('gender').value = 'Masculino';
+        document.getElementById('belt-category').value = 'Blanco a Punta Amarilla';
+        document.getElementById('custom-belt').style.display = 'none';
         this.updateCompetitorInputs(5);
         
         // Mostrar setup inicial
@@ -641,6 +750,9 @@ class RoundRobinTournament {
         document.getElementById('standings-body').innerHTML = '';
         document.getElementById('fights-list').innerHTML = '';
         document.getElementById('schedule-list').innerHTML = '';
+        
+        // Confirmar reset
+        alert('✅ Nuevo torneo iniciado!\n\nTodos los datos han sido limpiados. Puedes comenzar una nueva categoría.');
     }
 
     exportResults() {
@@ -737,12 +849,14 @@ class RoundRobinTournament {
         document.getElementById('setup-section').style.display = 'none';
         document.getElementById('brackets-section').style.display = 'block';
         document.getElementById('fight-section').style.display = 'block';
+        this.showTournamentInfo(); // Mostrar información de categoría
         this.updateBracketsDisplay();
     }
 
     showFightSection() {
         document.getElementById('setup-section').style.display = 'none';
         document.getElementById('fight-section').style.display = 'block';
+        this.showTournamentInfo(); // Mostrar información de categoría
     }
 
     updateBracketsDisplay() {
@@ -857,6 +971,90 @@ class RoundRobinTournament {
                 this.loadCurrentFight();
             } else {
                 alert('Debe completar todas las peleas de la fase de grupos primero.');
+            }
+        }
+    }
+
+    // Función de auto-guardado local solamente
+    saveToLocalStorage() {
+        const tournamentData = {
+            competitors: this.competitors,
+            fights: this.fights,
+            currentFightIndex: this.currentFightIndex,
+            categoryInfo: this.categoryInfo,
+            competitorCount: this.competitorCount,
+            brackets: this.brackets,
+            currentPhase: this.currentPhase,
+            groupWinners: this.groupWinners,
+            timestamp: new Date().toISOString()
+        };
+        
+        localStorage.setItem('taekwondo_tournament', JSON.stringify(tournamentData));
+        console.log('✅ Torneo guardado automáticamente');
+    }
+
+    loadFromLocalStorage() {
+        const saved = localStorage.getItem('taekwondo_tournament');
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                
+                // Mostrar opción de continuar torneo guardado
+                if (data.competitors && data.competitors.length > 0) {
+                    const continueMsg = `🔄 RECUPERAR TORNEO GUARDADO\n\n` +
+                        `Se encontró un torneo guardado automáticamente:\n\n` +
+                        `📋 Categoría: ${data.categoryInfo.gender} ${data.categoryInfo.ageFrom}-${data.categoryInfo.ageTo} años\n` +
+                        `🥋 Cinturones: ${data.categoryInfo.beltCategory}\n` +
+                        `👥 Competidores: ${data.competitors.length}\n` +
+                        `📅 Guardado: ${new Date(data.timestamp).toLocaleDateString('es-ES')} ${new Date(data.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}\n\n` +
+                        `¿Deseas continuar este torneo?`;
+                    
+                    if (confirm(continueMsg)) {
+                        this.restoreFromData(data);
+                        alert('✅ Torneo recuperado exitosamente!');
+                        return true;
+                    } else {
+                        // Si no quiere continuar, limpiar datos guardados
+                        localStorage.removeItem('taekwondo_tournament');
+                    }
+                }
+            } catch (e) {
+                console.log('Error cargando datos guardados:', e);
+                localStorage.removeItem('taekwondo_tournament');
+            }
+        }
+        return false;
+    }
+
+    restoreFromData(data) {
+        this.competitors = data.competitors || [];
+        this.fights = data.fights || [];
+        this.currentFightIndex = data.currentFightIndex || 0;
+        this.categoryInfo = data.categoryInfo || {};
+        this.competitorCount = data.competitorCount || 5;
+        this.brackets = data.brackets || [];
+        this.currentPhase = data.currentPhase || 'setup';
+        this.groupWinners = data.groupWinners || [];
+
+        // Restaurar fechas de las peleas
+        this.fights.forEach(fight => {
+            if (fight.completedAt) {
+                fight.completedAt = new Date(fight.completedAt);
+            }
+        });
+
+        // Mostrar la vista correcta según el estado
+        if (this.competitors.length > 0) {
+            if (this.competitorCount >= 6) {
+                this.showBracketsSection();
+            } else {
+                this.showFightSection();
+            }
+            this.updateStandings();
+            this.updateScheduleDisplay();
+            this.updateFightHistory();
+            if (this.currentFightIndex < this.fights.length) {
+                this.loadCurrentFight();
             }
         }
     }

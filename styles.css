@@ -81,6 +81,181 @@ header h1 i {
     font-size: 2rem;
 }
 
+/* Configuración de Categoría */
+.category-setup {
+    background: #f8f9fa;
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    border: 2px solid #e9ecef;
+}
+
+.category-setup h3 {
+    color: #2c3e50;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.3rem;
+}
+
+.category-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.category-input {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.category-input label {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.95rem;
+}
+
+.category-input select,
+.category-input input {
+    padding: 10px 15px;
+    border: 2px solid #3498db;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.category-input select:focus,
+.category-input input:focus {
+    outline: none;
+    border-color: #2980b9;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+/* Gestión de Datos */
+.data-management {
+    background: #f8f9fa;
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    border: 2px solid #e9ecef;
+    text-align: center;
+}
+
+.data-management h3 {
+    color: #2c3e50;
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+}
+
+.data-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.data-btn {
+    background: linear-gradient(145deg, #3498db, #2980b9);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+    min-width: 150px;
+}
+
+.data-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+}
+
+.data-btn:active {
+    transform: translateY(0);
+}
+
+.data-btn i {
+    margin-right: 8px;
+}
+
+.load-btn {
+    background: linear-gradient(145deg, #27ae60, #219a52);
+    box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+}
+
+.load-btn:hover {
+    box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+}
+
+.save-btn {
+    background: linear-gradient(145deg, #e74c3c, #c0392b);
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+}
+
+.save-btn:hover {
+    box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+}
+
+.data-info {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+    margin: 0;
+    font-style: italic;
+}
+
+/* Información del Torneo */
+.tournament-info {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.tournament-info h2 {
+    color: white;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.5rem;
+}
+
+.category-display {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+}
+
+.category-item {
+    text-align: center;
+    color: white;
+}
+
+.category-item h4 {
+    margin: 0 0 8px 0;
+    font-size: 0.9rem;
+    opacity: 0.8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.category-item span {
+    font-size: 1.1rem;
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 8px 12px;
+    border-radius: 20px;
+    display: inline-block;
+}
+
 .competitors-count {
     display: flex;
     flex-direction: column;
@@ -629,6 +804,13 @@ header h1 i {
 .fight-result {
     font-size: 0.9rem;
     color: #7f8c8d;
+}
+
+.fight-datetime {
+    font-size: 0.85rem;
+    color: #95a5a6;
+    font-style: italic;
+    margin-top: 5px;
 }
 
 /* Footer */
