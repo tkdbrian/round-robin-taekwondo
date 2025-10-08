@@ -1095,8 +1095,8 @@ class RoundRobinTournament {
     }
 
     generateRoundRobinPodium(sortedCompetitors) {
-        // Para Round Robin, mostrar top 3 tradicional
-        return sortedCompetitors.slice(0, 3).map((competitor, index) => `
+        // Para Round Robin, mostrar solo 1º y 2º lugar (sin 3º puesto)
+        return sortedCompetitors.slice(0, 2).map((competitor, index) => `
             <div class="podium-place place-${index + 1}">
                 <div class="place-number">${index + 1}°</div>
                 <div class="competitor-name">${competitor.name}</div>
