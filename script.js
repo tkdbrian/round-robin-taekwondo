@@ -1326,7 +1326,64 @@ class RoundRobinTournament {
         this.showTournamentInfo(); // Mostrar información de categoría
     }
 
+    updateBracketStatistics() {
+        // Reiniciar estadísticas de todos los competidores
+        this.competitors.forEach(competitor => {
+            competitor.fights = 0;
+            competitor.wins = 0;
+            competitor.ties = 0;
+            competitor.losses = 0;
+            competitor.victoryPoints = 0;
+            competitor.judgePoints = 0;
+        });
+
+        // Recalcular estadísticas basándose en peleas completadas
+        this.fights.forEach(fight => {
+            if (fight.completed) {
+                const fighter1 = this.competitors[fight.fighter1Index];
+                const fighter2 = this.competitors[fight.fighter2Index];
+                
+                fighter1.fights++;
+                fighter2.fights++;
+
+                // Contar votos para determinar resultado
+                const votes = { fighter1: 0, fighter2: 0, tie: 0 };
+                Object.values(fight.judgeVotes).forEach(decision => {
+                    if (decision === '1') votes.fighter1++;
+                    else if (decision === '2') votes.fighter2++;
+                    else if (decision === 'tie') votes.tie++;
+                });
+
+                // Determinar ganador y actualizar estadísticas
+                if (votes.fighter1 > votes.fighter2 && votes.fighter1 > votes.tie) {
+                    // Fighter1 gana
+                    fighter1.wins++;
+                    fighter1.victoryPoints += 3;
+                    fighter2.losses++;
+                } else if (votes.fighter2 > votes.fighter1 && votes.fighter2 > votes.tie) {
+                    // Fighter2 gana
+                    fighter2.wins++;
+                    fighter2.victoryPoints += 3;
+                    fighter1.losses++;
+                } else {
+                    // Empate (mayoría de votos empate o empate en votos ganadores)
+                    fighter1.ties++;
+                    fighter2.ties++;
+                    fighter1.victoryPoints += 1;
+                    fighter2.victoryPoints += 1;
+                }
+
+                // Asignar puntos de jueces
+                fighter1.judgePoints += votes.fighter1;
+                fighter2.judgePoints += votes.fighter2;
+            }
+        });
+    }
+
     updateBracketsDisplay() {
+        // Primero actualizar las estadísticas de todos los competidores
+        this.updateBracketStatistics();
+        
         const container = document.getElementById('brackets-container');
         container.innerHTML = '';
         
