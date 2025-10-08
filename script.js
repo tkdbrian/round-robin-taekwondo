@@ -929,16 +929,7 @@ class RoundRobinTournament {
                 </div>
                 
                 <div class="podium">
-                    ${sortedCompetitors.slice(0, 3).map((competitor, index) => `
-                        <div class="podium-place place-${index + 1}">
-                            <div class="place-number">${index + 1}°</div>
-                            <div class="competitor-name">${competitor.name}</div>
-                            <div class="competitor-stats">
-                                <span class="victories">${competitor.victoryPoints} victorias</span>
-                                <span class="judges">${competitor.judgePoints} jueces</span>
-                            </div>
-                        </div>
-                    `).join('')}
+                    ${this.competitorCount > 5 ? this.generateBracketPodium() : this.generateRoundRobinPodium(sortedCompetitors)}
                 </div>
                 
                 <div class="final-actions">
@@ -1027,6 +1018,94 @@ class RoundRobinTournament {
         
         // Confirmar reset
         alert('✅ Nuevo torneo iniciado!\n\nTodos los datos han sido limpiados. Puedes comenzar una nueva categoría.');
+    }
+
+    generateBracketPodium() {
+        // Para sistema de brackets, mostrar ganadores de cada llave
+        const finalFight = this.fights.find(f => f.isFinal && f.completed);
+        
+        if (finalFight) {
+            // Si la final ya se jugó, mostrar 1º y 2º
+            const votes = { fighter1: 0, fighter2: 0, tie: 0 };
+            Object.values(finalFight.judgeVotes).forEach(decision => {
+                if (decision === '1') votes.fighter1++;
+                else if (decision === '2') votes.fighter2++;
+                else if (decision === 'tie') votes.tie++;
+            });
+
+            let champion, runnerUp;
+            if (votes.fighter1 > votes.fighter2) {
+                champion = this.competitors[finalFight.fighter1Index];
+                runnerUp = this.competitors[finalFight.fighter2Index];
+            } else if (votes.fighter2 > votes.fighter1) {
+                champion = this.competitors[finalFight.fighter2Index];
+                runnerUp = this.competitors[finalFight.fighter1Index];
+            } else {
+                // En caso de empate, usar puntos de jueces de la final
+                champion = votes.fighter1 >= votes.fighter2 ? 
+                    this.competitors[finalFight.fighter1Index] : 
+                    this.competitors[finalFight.fighter2Index];
+                runnerUp = champion === this.competitors[finalFight.fighter1Index] ? 
+                    this.competitors[finalFight.fighter2Index] : 
+                    this.competitors[finalFight.fighter1Index];
+            }
+
+            return `
+                <div class="podium-place place-1">
+                    <div class="place-number">1°</div>
+                    <div class="competitor-name">${champion.name}</div>
+                    <div class="competitor-stats">
+                        <span class="victories">🏆 CAMPEÓN</span>
+                        <span class="judges">Ganador de la Final</span>
+                    </div>
+                </div>
+                <div class="podium-place place-2">
+                    <div class="place-number">2°</div>
+                    <div class="competitor-name">${runnerUp.name}</div>
+                    <div class="competitor-stats">
+                        <span class="victories">🥈 SUBCAMPEÓN</span>
+                        <span class="judges">Finalista</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Si la final no se ha jugado, mostrar ganadores de cada llave
+            const winner1 = this.competitors.find(c => c.id === this.groupWinners[0]);
+            const winner2 = this.competitors.find(c => c.id === this.groupWinners[1]);
+            
+            return `
+                <div class="podium-place place-1">
+                    <div class="place-number">1°</div>
+                    <div class="competitor-name">${winner1.name}</div>
+                    <div class="competitor-stats">
+                        <span class="victories">👑 Ganador ${this.brackets[0].name}</span>
+                        <span class="judges">${winner1.judgePoints} jueces</span>
+                    </div>
+                </div>
+                <div class="podium-place place-1">
+                    <div class="place-number">1°</div>
+                    <div class="competitor-name">${winner2.name}</div>
+                    <div class="competitor-stats">
+                        <span class="victories">👑 Ganador ${this.brackets[1].name}</span>
+                        <span class="judges">${winner2.judgePoints} jueces</span>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    generateRoundRobinPodium(sortedCompetitors) {
+        // Para Round Robin, mostrar top 3 tradicional
+        return sortedCompetitors.slice(0, 3).map((competitor, index) => `
+            <div class="podium-place place-${index + 1}">
+                <div class="place-number">${index + 1}°</div>
+                <div class="competitor-name">${competitor.name}</div>
+                <div class="competitor-stats">
+                    <span class="victories">${competitor.victoryPoints} victorias</span>
+                    <span class="judges">${competitor.judgePoints} jueces</span>
+                </div>
+            </div>
+        `).join('');
     }
 
     exportResults() {
