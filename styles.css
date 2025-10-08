@@ -444,13 +444,73 @@ header h1 i {
 
 .final-bracket {
     grid-column: 1 / -1;
-    background: linear-gradient(135deg, #e8f5e8, #f0f8f0);
-    border-color: #27ae60;
+    background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+    border: 3px solid #f39c12;
+    border-radius: 15px;
+    margin-top: 20px;
+    text-align: center;
+    padding: 25px;
+    box-shadow: 0 8px 16px rgba(243, 156, 18, 0.3);
 }
 
 .final-bracket h3 {
-    color: #27ae60;
-    font-size: 1.5rem;
+    color: #d35400;
+    font-size: 1.5em;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.champion-announcement {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    font-size: 1.2em;
+    margin-bottom: 20px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    animation: championGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes championGlow {
+    from { box-shadow: 0 0 10px rgba(243, 156, 18, 0.5); }
+    to { box-shadow: 0 0 20px rgba(243, 156, 18, 0.8); }
+}
+
+.bracket-competitor.champion {
+    background: linear-gradient(135deg, #f1c40f, #f39c12);
+    color: #2c3e50;
+    border: 3px solid #d35400;
+    font-weight: bold;
+    transform: scale(1.05);
+    box-shadow: 0 6px 12px rgba(243, 156, 18, 0.4);
+}
+
+.vs-indicator {
+    font-size: 1.2em;
+    color: #d35400;
+    font-weight: bold;
+    margin: 10px 0;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+}
+
+.final-result {
+    background: white;
+    border: 2px solid #f39c12;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+    color: #2c3e50;
+}
+
+.final-pending {
+    background: rgba(255, 255, 255, 0.8);
+    border: 2px dashed #f39c12;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+    color: #d35400;
+    font-style: italic;
 }
 
 /* Sección de Pelea */

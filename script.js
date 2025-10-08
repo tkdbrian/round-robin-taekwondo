@@ -1341,22 +1341,50 @@ class RoundRobinTournament {
             const winner1 = this.competitors.find(c => c.id === this.groupWinners[0]);
             const winner2 = this.competitors.find(c => c.id === this.groupWinners[1]);
             
+            // Buscar si ya se completó la final
+            const finalFight = this.fights.find(f => f.isFinal);
+            let finalResult = '';
+            let champion = null;
+            
+            if (finalFight && finalFight.completed) {
+                // La final ya se jugó
+                if (finalFight.result.includes(winner1.name)) {
+                    champion = winner1;
+                    finalResult = `<div class="champion-announcement">🏆 CAMPEÓN: <strong>${winner1.name}</strong></div>`;
+                } else if (finalFight.result.includes(winner2.name)) {
+                    champion = winner2;
+                    finalResult = `<div class="champion-announcement">🏆 CAMPEÓN: <strong>${winner2.name}</strong></div>`;
+                } else if (finalFight.result === 'Empate') {
+                    finalResult = `<div class="champion-announcement">⚡ EMPATE EN FINAL - Se requiere desempate</div>`;
+                }
+            }
+            
             finalDiv.innerHTML = `
-                <h3>🏆 FINAL</h3>
+                <h3>🏆 FINAL DE LA CATEGORÍA</h3>
+                ${finalResult}
                 <div class="bracket-competitors">
-                    <div class="bracket-competitor qualified">
+                    <div class="bracket-competitor qualified ${champion === winner1 ? 'champion' : ''}">
                         ${winner1.name}
                         <small style="display: block; font-size: 0.8em; margin-top: 5px;">
                             Ganador ${this.brackets[0].name}
                         </small>
                     </div>
-                    <div class="bracket-competitor qualified">
+                    <div class="vs-indicator">VS</div>
+                    <div class="bracket-competitor qualified ${champion === winner2 ? 'champion' : ''}">
                         ${winner2.name}
                         <small style="display: block; font-size: 0.8em; margin-top: 5px;">
                             Ganador ${this.brackets[1].name}
                         </small>
                     </div>
                 </div>
+                ${finalFight && finalFight.completed ? 
+                    `<div class="final-result">
+                        <strong>Resultado Final:</strong> ${finalFight.result}<br>
+                        <small>Fecha: ${finalFight.completedAt ? finalFight.completedAt.toLocaleDateString('es-ES') : ''} - 
+                        Hora: ${finalFight.completedAt ? finalFight.completedAt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : ''}</small>
+                    </div>` : 
+                    '<div class="final-pending">⏳ Final pendiente</div>'
+                }
             `;
             container.appendChild(finalDiv);
         }
@@ -1372,21 +1400,33 @@ class RoundRobinTournament {
         this.groupWinners = [];
         
         this.brackets.forEach(bracket => {
-            // Ordenar competidores de la llave por puntos
+            // Ordenar competidores de la llave por puntos CORRECTOS
             const sortedCompetitors = bracket.competitors.sort((a, b) => {
+                // Primero: victorias
+                if (b.victoryPoints !== a.victoryPoints) {
+                    return b.victoryPoints - a.victoryPoints;
+                }
+                // Segundo: jueces
                 if (b.judgePoints !== a.judgePoints) {
                     return b.judgePoints - a.judgePoints;
                 }
-                if (b.totalPoints !== a.totalPoints) {
-                    return b.totalPoints - a.totalPoints;
+                // Tercero: desempates ganados
+                const aTiebreakers = a.tiebreakerWins || 0;
+                const bTiebreakers = b.tiebreakerWins || 0;
+                if (bTiebreakers !== aTiebreakers) {
+                    return bTiebreakers - aTiebreakers;
                 }
-                return b.victoryPoints - a.victoryPoints;
+                // Cuarto: alfabético
+                return a.name.localeCompare(b.name);
             });
             
-            // El primer lugar de cada llave avanza
+            // El primer lugar de cada llave avanza a la FINAL
             this.groupWinners.push(sortedCompetitors[0].id);
             bracket.completed = true;
+            bracket.winner = sortedCompetitors[0]; // Guardar ganador para mostrar
         });
+        
+        console.log('Ganadores de llaves:', this.groupWinners);
     }
 
     generateFinalFight() {
