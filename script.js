@@ -345,10 +345,16 @@ class RoundRobinTournament {
     }
 
     loadCurrentFight() {
+        console.log('loadCurrentFight - currentFightIndex:', this.currentFightIndex, 'fights.length:', this.fights.length);
+        console.log('Peleas disponibles:', this.fights.map(f => ({completed: f.completed, isFinal: f.isFinal})));
+        
         if (this.currentFightIndex >= this.fights.length) {
-            // Verificar si hay empate y necesita desempate
-            if (this.checkForTieAndCreateTiebreaker()) {
-                return; // Se creó un combate de desempate, continuar
+            // Solo verificar empates para Round Robin, no para sistema de brackets
+            if (this.competitorCount <= 5) {
+                // Verificar si hay empate y necesita desempate
+                if (this.checkForTieAndCreateTiebreaker()) {
+                    return; // Se creó un combate de desempate, continuar
+                }
             }
             
             // Categoría completada sin empates
@@ -357,6 +363,15 @@ class RoundRobinTournament {
         }
 
         const currentFight = this.fights[this.currentFightIndex];
+        console.log('Pelea actual:', currentFight);
+        
+        if (currentFight.completed) {
+            console.log('La pelea actual ya está completada, avanzando...');
+            this.currentFightIndex++;
+            this.loadCurrentFight();
+            return;
+        }
+        
         const fighter1 = this.competitors[currentFight.fighter1Index];
         const fighter2 = this.competitors[currentFight.fighter2Index];
 
@@ -1325,7 +1340,7 @@ class RoundRobinTournament {
                         <div class="bracket-competitor ${this.groupWinners.includes(competitor.id) ? 'qualified' : ''}">
                             ${competitor.name}
                             <small style="display: block; font-size: 0.8em; margin-top: 5px;">
-                                ${competitor.totalPoints} pts (${competitor.wins}G-${competitor.ties}E-${competitor.losses}P)
+                                ${competitor.judgePoints} pts (${competitor.wins}G-${competitor.ties}E-${competitor.losses}P)
                             </small>
                         </div>
                     `).join('')}
