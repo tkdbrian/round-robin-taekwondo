@@ -22,7 +22,21 @@
         <!-- Configuración Inicial del Torneo -->
         <section id="setup-section" class="setup-section">
             <h2><i class="fas fa-users"></i> Configuración del Torneo</h2>
-            <div class="competitors-setup">
+            
+            <!-- Selector de número de competidores -->
+            <div class="competitors-count">
+                <label for="competitor-count">Número de competidores:</label>
+                <select id="competitor-count">
+                    <option value="3">3 Competidores (3 peleas)</option>
+                    <option value="4">4 Competidores (6 peleas)</option>
+                    <option value="5" selected>5 Competidores (10 peleas)</option>
+                    <option value="6">6 Competidores (2 llaves de 3 + Final)</option>
+                    <option value="7">7 Competidores (1 llave de 4 + 1 llave de 3 + Final)</option>
+                    <option value="8">8 Competidores (2 llaves de 4 + Final)</option>
+                </select>
+            </div>
+
+            <div class="competitors-setup" id="competitors-setup">
                 <div class="competitor-input">
                     <label>Competidor 1:</label>
                     <input type="text" id="competitor1" placeholder="Nombre del competidor 1" required>
@@ -35,17 +49,44 @@
                     <label>Competidor 3:</label>
                     <input type="text" id="competitor3" placeholder="Nombre del competidor 3" required>
                 </div>
-                <div class="competitor-input">
+                <div class="competitor-input" id="competitor4-container">
                     <label>Competidor 4:</label>
-                    <input type="text" id="competitor4" placeholder="Nombre del competidor 4" required>
+                    <input type="text" id="competitor4" placeholder="Nombre del competidor 4">
                 </div>
-                <div class="competitor-input">
+                <div class="competitor-input" id="competitor5-container">
                     <label>Competidor 5:</label>
-                    <input type="text" id="competitor5" placeholder="Nombre del competidor 5" required>
+                    <input type="text" id="competitor5" placeholder="Nombre del competidor 5">
+                </div>
+                <div class="competitor-input" id="competitor6-container">
+                    <label>Competidor 6:</label>
+                    <input type="text" id="competitor6" placeholder="Nombre del competidor 6">
+                </div>
+                <div class="competitor-input" id="competitor7-container">
+                    <label>Competidor 7:</label>
+                    <input type="text" id="competitor7" placeholder="Nombre del competidor 7">
+                </div>
+                <div class="competitor-input" id="competitor8-container">
+                    <label>Competidor 8:</label>
+                    <input type="text" id="competitor8" placeholder="Nombre del competidor 8">
                 </div>
                 <button id="start-tournament" class="start-btn">
                     <i class="fas fa-play"></i>
                     Iniciar Torneo
+                </button>
+            </div>
+        </section>
+
+        <!-- Llaves del Torneo -->
+        <section id="brackets-section" class="brackets-section" style="display: none;">
+            <h2><i class="fas fa-sitemap"></i> Llaves del Torneo</h2>
+            <div id="brackets-container" class="brackets-container">
+                <!-- Se llena dinámicamente -->
+            </div>
+            <div class="phase-info">
+                <span id="current-phase">Fase de Grupos</span>
+                <button id="next-phase" class="phase-btn" style="display: none;">
+                    <i class="fas fa-arrow-right"></i>
+                    Siguiente Fase
                 </button>
             </div>
         </section>
@@ -206,6 +247,11 @@
             </div>
         </section>
     </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p><i class="fas fa-code"></i> Sistema realizado por <strong>Brian E. Lipnjak</strong></p>
+    </footer>
 
     <!-- Modal de Resultado Final del Torneo -->
     <div id="tournament-result-modal" class="modal">

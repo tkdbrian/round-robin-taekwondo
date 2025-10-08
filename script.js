@@ -6,14 +6,20 @@ class RoundRobinTournament {
         this.currentFightIndex = 0;
         this.judgeDecisions = {};
         this.standings = {};
+        this.competitorCount = 5; // Por defecto 5 competidores
+        this.brackets = []; // Para sistema de llaves
+        this.currentPhase = 'setup'; // setup, groups, final
+        this.groupWinners = []; // Ganadores de cada grupo
         
         this.initializeEventListeners();
-        this.generateFightSchedule();
     }
 
     initializeEventListeners() {
         // Configuración inicial
         document.getElementById('start-tournament').addEventListener('click', () => this.startTournament());
+        
+        // Selector de número de competidores
+        document.getElementById('competitor-count').addEventListener('change', (e) => this.updateCompetitorInputs(e.target.value));
         
         // Botones de jueces
         document.querySelectorAll('.judge-btn').forEach(btn => {
@@ -24,31 +30,73 @@ class RoundRobinTournament {
         document.getElementById('confirm-fight').addEventListener('click', () => this.confirmFight());
         document.getElementById('reset-fight').addEventListener('click', () => this.resetCurrentFight());
         
+        // Controles de fase
+        document.getElementById('next-phase').addEventListener('click', () => this.nextPhase());
+        
         // Modal
         document.getElementById('close-tournament-modal').addEventListener('click', () => this.closeTournamentModal());
         document.getElementById('new-tournament').addEventListener('click', () => this.newTournament());
         document.getElementById('export-results').addEventListener('click', () => this.exportResults());
+        
+        // Inicializar con 5 competidores por defecto
+        this.updateCompetitorInputs(5);
+    }
+
+    updateCompetitorInputs(count) {
+        this.competitorCount = parseInt(count);
+        
+        // Mostrar/ocultar campos según el número seleccionado
+        for (let i = 4; i <= 8; i++) {
+            const container = document.getElementById(`competitor${i}-container`);
+            const input = document.getElementById(`competitor${i}`);
+            
+            if (count >= i) {
+                container.style.display = 'flex';
+                input.required = true;
+            } else {
+                container.style.display = 'none';
+                input.required = false;
+                input.value = '';
+            }
+        }
+        
+        // Actualizar el texto del botón según el sistema
+        let buttonText = '';
+        if (count <= 5) {
+            const totalFights = (count * (count - 1)) / 2;
+            buttonText = `Iniciar Torneo (${totalFights} peleas)`;
+        } else if (count == 6) {
+            buttonText = 'Iniciar Torneo (2 llaves de 3 + Final)';
+        } else if (count == 7) {
+            buttonText = 'Iniciar Torneo (1 llave de 4 + 1 llave de 3 + Final)';
+        } else if (count == 8) {
+            buttonText = 'Iniciar Torneo (2 llaves de 4 + Final)';
+        }
+        
+        document.querySelector('.start-btn').innerHTML = `
+            <i class="fas fa-play"></i>
+            ${buttonText}
+        `;
     }
 
     startTournament() {
-        // Obtener nombres de los competidores
-        const competitorInputs = [
-            document.getElementById('competitor1').value.trim(),
-            document.getElementById('competitor2').value.trim(),
-            document.getElementById('competitor3').value.trim(),
-            document.getElementById('competitor4').value.trim(),
-            document.getElementById('competitor5').value.trim()
-        ];
-
-        // Validar que todos los campos estén llenos
-        if (competitorInputs.some(name => name === '')) {
-            alert('Por favor, ingresa el nombre de todos los competidores.');
-            return;
+        // Obtener nombres de los competidores según la cantidad seleccionada
+        const competitorInputs = [];
+        for (let i = 1; i <= this.competitorCount; i++) {
+            const input = document.getElementById(`competitor${i}`);
+            if (input && input.style.display !== 'none') {
+                const value = input.value.trim();
+                if (value === '') {
+                    alert(`Por favor, ingresa el nombre del competidor ${i}.`);
+                    return;
+                }
+                competitorInputs.push(value);
+            }
         }
 
         // Validar nombres únicos
         const uniqueNames = new Set(competitorInputs);
-        if (uniqueNames.size !== 5) {
+        if (uniqueNames.size !== competitorInputs.length) {
             alert('Todos los competidores deben tener nombres únicos.');
             return;
         }
@@ -63,18 +111,25 @@ class RoundRobinTournament {
             losses: 0,
             victoryPoints: 0,
             judgePoints: 0,
-            totalPoints: 0
+            totalPoints: 0,
+            bracket: null // Para identificar a qué llave pertenece
         }));
 
-        // Generar calendario de peleas
-        this.generateFightSchedule();
+        // Decidir el sistema según el número de competidores
+        if (this.competitorCount <= 5) {
+            // Sistema Round Robin tradicional
+            this.currentPhase = 'roundrobin';
+            this.generateFightSchedule();
+            this.showFightSection();
+        } else {
+            // Sistema de llaves
+            this.currentPhase = 'groups';
+            this.createBrackets();
+            this.generateGroupStage();
+            this.showBracketsSection();
+        }
+        
         this.initializeStandings();
-        
-        // Mostrar sección de peleas
-        document.getElementById('setup-section').style.display = 'none';
-        document.getElementById('fight-section').style.display = 'block';
-        
-        // Cargar primera pelea
         this.loadCurrentFight();
         this.updateStandings();
         this.updateScheduleDisplay();
@@ -83,9 +138,9 @@ class RoundRobinTournament {
     generateFightSchedule() {
         this.fights = [];
         
-        // Generar todas las combinaciones posibles (Round Robin)
-        for (let i = 0; i < 5; i++) {
-            for (let j = i + 1; j < 5; j++) {
+        // Generar todas las combinaciones posibles (Round Robin) según el número de competidores
+        for (let i = 0; i < this.competitors.length; i++) {
+            for (let j = i + 1; j < this.competitors.length; j++) {
                 this.fights.push({
                     fighter1Index: i,
                     fighter2Index: j,
@@ -114,8 +169,15 @@ class RoundRobinTournament {
         const fighter2 = this.competitors[currentFight.fighter2Index];
 
         // Actualizar información de la pelea
-        document.getElementById('current-fight-info').textContent = 
-            `Pelea ${this.currentFightIndex + 1} de ${this.fights.length}`;
+        let fightInfo = `Pelea ${this.currentFightIndex + 1} de ${this.fights.length}`;
+        if (currentFight.isFinal) {
+            fightInfo = `🏆 FINAL - ${fightInfo}`;
+        } else if (currentFight.bracket) {
+            const bracketName = this.brackets.find(b => b.id === currentFight.bracket)?.name || '';
+            fightInfo = `${bracketName} - ${fightInfo}`;
+        }
+        
+        document.getElementById('current-fight-info').textContent = fightInfo;
         document.getElementById('fighter1-name').textContent = fighter1.name;
         document.getElementById('fighter2-name').textContent = fighter2.name;
 
@@ -126,7 +188,7 @@ class RoundRobinTournament {
             .forEach(el => el.textContent = fighter2.name);
 
         // Actualizar header
-        document.getElementById('fight-display').textContent = `Pelea ${this.currentFightIndex + 1} de ${this.fights.length}`;
+        document.getElementById('fight-display').textContent = fightInfo;
         document.getElementById('competitors-display').textContent = `${fighter1.name} vs ${fighter2.name}`;
 
         // Reset de decisiones de jueces
@@ -195,17 +257,27 @@ class RoundRobinTournament {
 
         // Determinar resultado
         if (votes.fighter1 > votes.fighter2 && votes.fighter1 > votes.tie) {
-            // Fighter 1 gana
+            // Fighter 1 gana (tiene más votos que el fighter 2 Y más que empates)
             winner = `${fighter1.name} (Ganador)`;
             victoryPoints = `${fighter1.name}: 3 pts, ${fighter2.name}: 0 pts`;
             judgePoints = `${fighter1.name}: +${votes.fighter1} pts, ${fighter2.name}: +${votes.fighter2} pts`;
         } else if (votes.fighter2 > votes.fighter1 && votes.fighter2 > votes.tie) {
-            // Fighter 2 gana
+            // Fighter 2 gana (tiene más votos que el fighter 1 Y más que empates)
+            winner = `${fighter2.name} (Ganador)`;
+            victoryPoints = `${fighter2.name}: 3 pts, ${fighter1.name}: 0 pts`;
+            judgePoints = `${fighter2.name}: +${votes.fighter2} pts, ${fighter1.name}: +${votes.fighter1} pts`;
+        } else if (votes.fighter1 > votes.fighter2) {
+            // Fighter 1 tiene más votos que fighter 2, aunque haya empates
+            winner = `${fighter1.name} (Ganador)`;
+            victoryPoints = `${fighter1.name}: 3 pts, ${fighter2.name}: 0 pts`;
+            judgePoints = `${fighter1.name}: +${votes.fighter1} pts, ${fighter2.name}: +${votes.fighter2} pts`;
+        } else if (votes.fighter2 > votes.fighter1) {
+            // Fighter 2 tiene más votos que fighter 1, aunque haya empates
             winner = `${fighter2.name} (Ganador)`;
             victoryPoints = `${fighter2.name}: 3 pts, ${fighter1.name}: 0 pts`;
             judgePoints = `${fighter2.name}: +${votes.fighter2} pts, ${fighter1.name}: +${votes.fighter1} pts`;
         } else {
-            // Empate (puede ser por empate de votos o mayoría de empates)
+            // Empate real (mismo número de votos para ambos fighters)
             winner = 'Empate';
             victoryPoints = `${fighter1.name}: 1 pt, ${fighter2.name}: 1 pt`;
             judgePoints = `${fighter1.name}: +${votes.fighter1} pts, ${fighter2.name}: +${votes.fighter2} pts`;
@@ -243,19 +315,31 @@ class RoundRobinTournament {
 
         // Asignar puntos de victoria/empate
         if (votes.fighter1 > votes.fighter2 && votes.fighter1 > votes.tie) {
-            // Fighter 1 gana
+            // Fighter 1 gana claramente (más votos que fighter 2 Y más que empates)
             fighter1.wins++;
             fighter1.victoryPoints += 3;
             fighter2.losses++;
             currentFight.result = `${fighter1.name} ganó`;
         } else if (votes.fighter2 > votes.fighter1 && votes.fighter2 > votes.tie) {
-            // Fighter 2 gana
+            // Fighter 2 gana claramente (más votos que fighter 1 Y más que empates)
+            fighter2.wins++;
+            fighter2.victoryPoints += 3;
+            fighter1.losses++;
+            currentFight.result = `${fighter2.name} ganó`;
+        } else if (votes.fighter1 > votes.fighter2) {
+            // Fighter 1 tiene más votos que fighter 2, aunque haya empates
+            fighter1.wins++;
+            fighter1.victoryPoints += 3;
+            fighter2.losses++;
+            currentFight.result = `${fighter1.name} ganó`;
+        } else if (votes.fighter2 > votes.fighter1) {
+            // Fighter 2 tiene más votos que fighter 1, aunque haya empates
             fighter2.wins++;
             fighter2.victoryPoints += 3;
             fighter1.losses++;
             currentFight.result = `${fighter2.name} ganó`;
         } else {
-            // Empate
+            // Empate real (mismo número de votos para ambos fighters)
             fighter1.ties++;
             fighter2.ties++;
             fighter1.victoryPoints += 1;
@@ -282,6 +366,17 @@ class RoundRobinTournament {
         this.updateStandings();
         this.updateFightHistory();
         this.updateScheduleDisplay();
+        
+        // Si es sistema de llaves, actualizar brackets
+        if (this.competitorCount > 5) {
+            this.updateBracketsDisplay();
+            
+            // Verificar si se completó la fase de grupos
+            if (this.currentPhase === 'groups' && this.checkGroupStageComplete()) {
+                document.getElementById('current-phase').textContent = 'Fase de Grupos Completada';
+                document.getElementById('next-phase').style.display = 'block';
+            }
+        }
         
         // Cargar siguiente pelea
         this.loadCurrentFight();
@@ -397,44 +492,123 @@ class RoundRobinTournament {
         
         // Actualizar standings finales en el modal
         const finalStandings = document.getElementById('final-standings');
-        const sortedCompetitors = [...this.competitors].sort((a, b) => {
-            // Primero: El que tiene más puntos de jueces
-            if (b.judgePoints !== a.judgePoints) {
-                return b.judgePoints - a.judgePoints;
+        
+        if (this.competitorCount > 5) {
+            // Sistema de llaves - buscar ganador de la final
+            const finalFight = this.fights.find(f => f.isFinal && f.completed);
+            let championMessage = '';
+            
+            if (finalFight) {
+                // Determinar ganador de la final
+                const votes = {
+                    fighter1: 0,
+                    fighter2: 0,
+                    tie: 0
+                };
+                
+                Object.values(finalFight.judgeVotes).forEach(decision => {
+                    if (decision === '1') votes.fighter1++;
+                    else if (decision === '2') votes.fighter2++;
+                    else if (decision === 'tie') votes.tie++;
+                });
+                
+                let champion;
+                if (votes.fighter1 > votes.fighter2) {
+                    champion = this.competitors[finalFight.fighter1Index];
+                } else if (votes.fighter2 > votes.fighter1) {
+                    champion = this.competitors[finalFight.fighter2Index];
+                } else {
+                    // En caso de empate en la final, gana quien tenga más puntos de jueces en la final
+                    const fighter1 = this.competitors[finalFight.fighter1Index];
+                    const fighter2 = this.competitors[finalFight.fighter2Index];
+                    champion = votes.fighter1 >= votes.fighter2 ? fighter1 : fighter2;
+                }
+                
+                championMessage = `
+                    <div style="text-align: center; margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, #f1c40f, #f39c12); border-radius: 15px; color: white;">
+                        <h2 style="margin: 0; font-size: 2rem;">🏆 CAMPEÓN DE LA CATEGORÍA</h2>
+                        <h3 style="margin: 10px 0; font-size: 1.5rem;">${champion.name}</h3>
+                        <p style="margin: 5px 0;">Ganador de la Final</p>
+                    </div>
+                `;
             }
-            // En caso de empate: Se suma puntos de victoria + puntos de jueces
-            if (b.totalPoints !== a.totalPoints) {
-                return b.totalPoints - a.totalPoints;
-            }
-            // Si persiste empate, por puntos de victoria
-            return b.victoryPoints - a.victoryPoints;
-        });
+            
+            finalStandings.innerHTML = `
+                ${championMessage}
+                <div class="final-standings-table">
+                    <h3>📊 Resultados por Llaves</h3>
+                    ${this.brackets.map(bracket => `
+                        <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 10px; border-left: 5px solid #3498db;">
+                            <h4 style="color: #2c3e50; margin-bottom: 10px;">${bracket.name}</h4>
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #3498db; color: white;">
+                                        <th style="padding: 8px;">Pos</th>
+                                        <th style="padding: 8px;">Competidor</th>
+                                        <th style="padding: 8px;">Pts Jueces</th>
+                                        <th style="padding: 8px;">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${bracket.competitors
+                                        .sort((a, b) => {
+                                            if (b.judgePoints !== a.judgePoints) return b.judgePoints - a.judgePoints;
+                                            return b.totalPoints - a.totalPoints;
+                                        })
+                                        .map((competitor, index) => `
+                                            <tr style="border-bottom: 1px solid #ddd; ${index === 0 ? 'background: #27ae60; color: white; font-weight: bold;' : ''}">
+                                                <td style="padding: 8px; text-align: center;">${index + 1}°</td>
+                                                <td style="padding: 8px;">${competitor.name}</td>
+                                                <td style="padding: 8px; text-align: center;">${competitor.judgePoints}</td>
+                                                <td style="padding: 8px; text-align: center;">${competitor.totalPoints}</td>
+                                            </tr>
+                                        `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            // Sistema Round Robin tradicional
+            const sortedCompetitors = [...this.competitors].sort((a, b) => {
+                if (b.judgePoints !== a.judgePoints) {
+                    return b.judgePoints - a.judgePoints;
+                }
+                if (b.totalPoints !== a.totalPoints) {
+                    return b.totalPoints - a.totalPoints;
+                }
+                return b.victoryPoints - a.victoryPoints;
+            });
 
-        finalStandings.innerHTML = `
-            <div class="final-standings-table">
-                <h3>🏆 Clasificación Final</h3>
-                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-                    <thead>
-                        <tr style="background: #3498db; color: white;">
-                            <th style="padding: 10px;">Pos</th>
-                            <th style="padding: 10px;">Competidor</th>
-                            <th style="padding: 10px;">Pts Total</th>
-                            <th style="padding: 10px;">G-E-P</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${sortedCompetitors.map((competitor, index) => `
-                            <tr style="border-bottom: 1px solid #ddd; ${index === 0 ? 'background: #f1c40f; font-weight: bold;' : ''}">
-                                <td style="padding: 10px; text-align: center;">${index + 1}°</td>
-                                <td style="padding: 10px;">${competitor.name}</td>
-                                <td style="padding: 10px; text-align: center;"><strong>${competitor.totalPoints}</strong></td>
-                                <td style="padding: 10px; text-align: center;">${competitor.wins}-${competitor.ties}-${competitor.losses}</td>
+            finalStandings.innerHTML = `
+                <div class="final-standings-table">
+                    <h3>🏆 Clasificación Final</h3>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                        <thead>
+                            <tr style="background: #3498db; color: white;">
+                                <th style="padding: 10px;">Pos</th>
+                                <th style="padding: 10px;">Competidor</th>
+                                <th style="padding: 10px;">Pts Jueces</th>
+                                <th style="padding: 10px;">Pts Total</th>
+                                <th style="padding: 10px;">G-E-P</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
+                        </thead>
+                        <tbody>
+                            ${sortedCompetitors.map((competitor, index) => `
+                                <tr style="border-bottom: 1px solid #ddd; ${index === 0 ? 'background: #f1c40f; font-weight: bold;' : ''}">
+                                    <td style="padding: 10px; text-align: center;">${index + 1}°</td>
+                                    <td style="padding: 10px;">${competitor.name}</td>
+                                    <td style="padding: 10px; text-align: center;"><strong>${competitor.judgePoints}</strong></td>
+                                    <td style="padding: 10px; text-align: center;">${competitor.totalPoints}</td>
+                                    <td style="padding: 10px; text-align: center;">${competitor.wins}-${competitor.ties}-${competitor.losses}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
 
         document.getElementById('tournament-result-modal').style.display = 'block';
     }
@@ -449,9 +623,14 @@ class RoundRobinTournament {
         this.fights = [];
         this.currentFightIndex = 0;
         this.judgeDecisions = {};
+        this.competitorCount = 5;
         
         // Limpiar inputs
         document.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
+        
+        // Resetear selector
+        document.getElementById('competitor-count').value = '5';
+        this.updateCompetitorInputs(5);
         
         // Mostrar setup inicial
         document.getElementById('setup-section').style.display = 'block';
@@ -492,6 +671,194 @@ class RoundRobinTournament {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+
+    // Métodos para sistema de llaves
+    createBrackets() {
+        this.brackets = [];
+        
+        if (this.competitorCount === 6) {
+            // 2 llaves de 3
+            this.brackets = [
+                { id: 1, name: 'Llave A', competitors: this.competitors.slice(0, 3), completed: false },
+                { id: 2, name: 'Llave B', competitors: this.competitors.slice(3, 6), completed: false }
+            ];
+        } else if (this.competitorCount === 7) {
+            // 1 llave de 4 + 1 llave de 3
+            this.brackets = [
+                { id: 1, name: 'Llave A', competitors: this.competitors.slice(0, 4), completed: false },
+                { id: 2, name: 'Llave B', competitors: this.competitors.slice(4, 7), completed: false }
+            ];
+        } else if (this.competitorCount === 8) {
+            // 2 llaves de 4
+            this.brackets = [
+                { id: 1, name: 'Llave A', competitors: this.competitors.slice(0, 4), completed: false },
+                { id: 2, name: 'Llave B', competitors: this.competitors.slice(4, 8), completed: false }
+            ];
+        }
+        
+        // Asignar llave a cada competidor
+        this.brackets.forEach(bracket => {
+            bracket.competitors.forEach(competitor => {
+                competitor.bracket = bracket.id;
+            });
+        });
+    }
+
+    generateGroupStage() {
+        this.fights = [];
+        
+        // Generar peleas para cada llave
+        this.brackets.forEach(bracket => {
+            for (let i = 0; i < bracket.competitors.length; i++) {
+                for (let j = i + 1; j < bracket.competitors.length; j++) {
+                    const fighter1Index = this.competitors.findIndex(c => c.id === bracket.competitors[i].id);
+                    const fighter2Index = this.competitors.findIndex(c => c.id === bracket.competitors[j].id);
+                    
+                    this.fights.push({
+                        fighter1Index: fighter1Index,
+                        fighter2Index: fighter2Index,
+                        bracket: bracket.id,
+                        completed: false,
+                        result: null,
+                        judgeVotes: {
+                            judge1: null,
+                            judge2: null,
+                            judge3: null,
+                            judge4: null
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    showBracketsSection() {
+        document.getElementById('setup-section').style.display = 'none';
+        document.getElementById('brackets-section').style.display = 'block';
+        document.getElementById('fight-section').style.display = 'block';
+        this.updateBracketsDisplay();
+    }
+
+    showFightSection() {
+        document.getElementById('setup-section').style.display = 'none';
+        document.getElementById('fight-section').style.display = 'block';
+    }
+
+    updateBracketsDisplay() {
+        const container = document.getElementById('brackets-container');
+        container.innerHTML = '';
+        
+        this.brackets.forEach(bracket => {
+            const bracketDiv = document.createElement('div');
+            bracketDiv.className = 'bracket';
+            bracketDiv.innerHTML = `
+                <h3>${bracket.name}</h3>
+                <div class="bracket-competitors">
+                    ${bracket.competitors.map(competitor => `
+                        <div class="bracket-competitor ${this.groupWinners.includes(competitor.id) ? 'qualified' : ''}">
+                            ${competitor.name}
+                            <small style="display: block; font-size: 0.8em; margin-top: 5px;">
+                                ${competitor.totalPoints} pts (${competitor.wins}G-${competitor.ties}E-${competitor.losses}P)
+                            </small>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            container.appendChild(bracketDiv);
+        });
+        
+        // Si estamos en fase final, mostrar la final
+        if (this.currentPhase === 'final' && this.groupWinners.length === 2) {
+            const finalDiv = document.createElement('div');
+            finalDiv.className = 'bracket final-bracket';
+            const winner1 = this.competitors.find(c => c.id === this.groupWinners[0]);
+            const winner2 = this.competitors.find(c => c.id === this.groupWinners[1]);
+            
+            finalDiv.innerHTML = `
+                <h3>🏆 FINAL</h3>
+                <div class="bracket-competitors">
+                    <div class="bracket-competitor qualified">
+                        ${winner1.name}
+                        <small style="display: block; font-size: 0.8em; margin-top: 5px;">
+                            Ganador ${this.brackets[0].name}
+                        </small>
+                    </div>
+                    <div class="bracket-competitor qualified">
+                        ${winner2.name}
+                        <small style="display: block; font-size: 0.8em; margin-top: 5px;">
+                            Ganador ${this.brackets[1].name}
+                        </small>
+                    </div>
+                </div>
+            `;
+            container.appendChild(finalDiv);
+        }
+    }
+
+    checkGroupStageComplete() {
+        // Verificar si todas las peleas de grupos están completadas
+        const groupFights = this.fights.filter(f => f.bracket && !f.completed);
+        return groupFights.length === 0;
+    }
+
+    determineGroupWinners() {
+        this.groupWinners = [];
+        
+        this.brackets.forEach(bracket => {
+            // Ordenar competidores de la llave por puntos
+            const sortedCompetitors = bracket.competitors.sort((a, b) => {
+                if (b.judgePoints !== a.judgePoints) {
+                    return b.judgePoints - a.judgePoints;
+                }
+                if (b.totalPoints !== a.totalPoints) {
+                    return b.totalPoints - a.totalPoints;
+                }
+                return b.victoryPoints - a.victoryPoints;
+            });
+            
+            // El primer lugar de cada llave avanza
+            this.groupWinners.push(sortedCompetitors[0].id);
+            bracket.completed = true;
+        });
+    }
+
+    generateFinalFight() {
+        if (this.groupWinners.length !== 2) return;
+        
+        const fighter1Index = this.competitors.findIndex(c => c.id === this.groupWinners[0]);
+        const fighter2Index = this.competitors.findIndex(c => c.id === this.groupWinners[1]);
+        
+        this.fights.push({
+            fighter1Index: fighter1Index,
+            fighter2Index: fighter2Index,
+            bracket: null, // No pertenece a ninguna llave
+            isFinal: true,
+            completed: false,
+            result: null,
+            judgeVotes: {
+                judge1: null,
+                judge2: null,
+                judge3: null,
+                judge4: null
+            }
+        });
+    }
+
+    nextPhase() {
+        if (this.currentPhase === 'groups') {
+            if (this.checkGroupStageComplete()) {
+                this.determineGroupWinners();
+                this.generateFinalFight();
+                this.currentPhase = 'final';
+                document.getElementById('current-phase').textContent = 'FINAL';
+                document.getElementById('next-phase').style.display = 'none';
+                this.updateBracketsDisplay();
+                this.loadCurrentFight();
+            } else {
+                alert('Debe completar todas las peleas de la fase de grupos primero.');
+            }
+        }
     }
 }
 
