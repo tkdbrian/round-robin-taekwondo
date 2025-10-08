@@ -633,6 +633,21 @@ class RoundRobinTournament {
         const tbody = document.getElementById('standings-body');
         tbody.innerHTML = '';
 
+        // Si es sistema de brackets y estamos en fase de grupos, no mostrar tabla general
+        if (this.competitorCount > 5 && this.currentPhase === 'groups') {
+            // En fase de grupos de brackets, no mostrar tabla de posiciones general
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 20px; color: #666;">
+                        <strong>Fase de Grupos en Progreso</strong><br>
+                        Las posiciones se mostrarán al completar todas las peleas de los brackets
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        // Para Round Robin o después de completar fase de grupos
         // Ordenar competidores: PRIMERO por victorias, en empate por jueces, luego desempates ganados
         const sortedCompetitors = [...this.competitors].sort((a, b) => {
             // Primero: El que tiene más victorias (combates ganados)
@@ -1327,19 +1342,26 @@ class RoundRobinTournament {
     }
 
     updateBracketStatistics() {
-        // Reiniciar estadísticas de todos los competidores
+        // Solo actualizar estadísticas para competidores en brackets
+        const bracketCompetitorIds = this.brackets.flatMap(bracket => 
+            bracket.competitors.map(c => c.id)
+        );
+        
+        // Reiniciar estadísticas solo de competidores en brackets
         this.competitors.forEach(competitor => {
-            competitor.fights = 0;
-            competitor.wins = 0;
-            competitor.ties = 0;
-            competitor.losses = 0;
-            competitor.victoryPoints = 0;
-            competitor.judgePoints = 0;
+            if (bracketCompetitorIds.includes(competitor.id)) {
+                competitor.fights = 0;
+                competitor.wins = 0;
+                competitor.ties = 0;
+                competitor.losses = 0;
+                competitor.victoryPoints = 0;
+                competitor.judgePoints = 0;
+            }
         });
 
-        // Recalcular estadísticas basándose en peleas completadas
+        // Recalcular estadísticas basándose en peleas completadas de brackets
         this.fights.forEach(fight => {
-            if (fight.completed) {
+            if (fight.completed && fight.bracket) { // Solo peleas de brackets
                 const fighter1 = this.competitors[fight.fighter1Index];
                 const fighter2 = this.competitors[fight.fighter2Index];
                 
@@ -1390,12 +1412,32 @@ class RoundRobinTournament {
         this.brackets.forEach(bracket => {
             const bracketDiv = document.createElement('div');
             bracketDiv.className = 'bracket';
+            
+            // Ordenar competidores dentro del bracket por estadísticas
+            const sortedCompetitors = [...bracket.competitors].sort((a, b) => {
+                // Primero por puntos de victoria
+                if (b.victoryPoints !== a.victoryPoints) {
+                    return b.victoryPoints - a.victoryPoints;
+                }
+                // Luego por puntos de jueces
+                if (b.judgePoints !== a.judgePoints) {
+                    return b.judgePoints - a.judgePoints;
+                }
+                // Finalmente alfabético
+                return a.name.localeCompare(b.name);
+            });
+            
             bracketDiv.innerHTML = `
                 <h3>${bracket.name}</h3>
                 <div class="bracket-competitors">
-                    ${bracket.competitors.map(competitor => `
+                    ${sortedCompetitors.map((competitor, index) => `
                         <div class="bracket-competitor ${this.groupWinners.includes(competitor.id) ? 'qualified' : ''}">
-                            ${competitor.name}
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: ${index === 0 ? 'bold' : 'normal'};">
+                                    ${index + 1}º ${competitor.name}
+                                </span>
+                                ${index === 0 && this.currentPhase === 'groups' ? '<span style="color: #27ae60;">👑</span>' : ''}
+                            </div>
                             <small style="display: block; font-size: 0.8em; margin-top: 5px;">
                                 ${competitor.judgePoints} pts (${competitor.wins}G-${competitor.ties}E-${competitor.losses}P)
                             </small>
