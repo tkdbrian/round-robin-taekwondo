@@ -1,4 +1,6 @@
 // Sistema Round Robin - Taekwon-Do
+let tournament; // Variable global para acceso desde HTML
+
 class RoundRobinTournament {
     constructor() {
         this.competitors = [];
@@ -694,6 +696,90 @@ class RoundRobinTournament {
 
     closeTournamentModal() {
         document.getElementById('tournament-result-modal').style.display = 'none';
+        
+        // Mostrar sección de resultados finales permanente
+        this.showFinalResultsSection();
+    }
+
+    showFinalResultsSection() {
+        // Crear o mostrar sección de resultados finales
+        let finalSection = document.getElementById('final-results-section');
+        
+        if (!finalSection) {
+            finalSection = document.createElement('section');
+            finalSection.id = 'final-results-section';
+            finalSection.className = 'final-results-section';
+            
+            // Insertar antes del footer
+            const footer = document.querySelector('.footer');
+            footer.parentNode.insertBefore(finalSection, footer);
+        }
+        
+        // Obtener competidores ordenados
+        const sortedCompetitors = [...this.competitors].sort((a, b) => {
+            if (b.victoryPoints !== a.victoryPoints) {
+                return b.victoryPoints - a.victoryPoints;
+            }
+            return b.judgePoints - a.judgePoints;
+        });
+        
+        finalSection.innerHTML = `
+            <div class="final-results-container">
+                <h2><i class="fas fa-trophy"></i> Torneo Finalizado - Resultados</h2>
+                
+                <div class="tournament-summary">
+                    <div class="summary-item">
+                        <h4>Categoría</h4>
+                        <span>${this.categoryInfo.gender} ${this.categoryInfo.ageFrom}-${this.categoryInfo.ageTo} años</span>
+                    </div>
+                    <div class="summary-item">
+                        <h4>Cinturones</h4>
+                        <span>${this.categoryInfo.beltCategory}</span>
+                    </div>
+                    <div class="summary-item">
+                        <h4>Competidores</h4>
+                        <span>${this.competitors.length}</span>
+                    </div>
+                    <div class="summary-item">
+                        <h4>Combates</h4>
+                        <span>${this.fights.filter(f => f.completed).length}</span>
+                    </div>
+                </div>
+                
+                <div class="podium">
+                    ${sortedCompetitors.slice(0, 3).map((competitor, index) => `
+                        <div class="podium-place place-${index + 1}">
+                            <div class="place-number">${index + 1}°</div>
+                            <div class="competitor-name">${competitor.name}</div>
+                            <div class="competitor-stats">
+                                <span class="victories">${competitor.victoryPoints} victorias</span>
+                                <span class="judges">${competitor.judgePoints} jueces</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="final-actions">
+                    <button class="action-btn results-btn" onclick="tournament.showTournamentResults()">
+                        <i class="fas fa-table"></i>
+                        Ver Tabla Completa
+                    </button>
+                    <button class="action-btn export-btn" onclick="tournament.exportResults()">
+                        <i class="fas fa-download"></i>
+                        Exportar Resultados
+                    </button>
+                    <button class="action-btn new-btn" onclick="tournament.newTournament()">
+                        <i class="fas fa-plus"></i>
+                        Nueva Categoría
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        finalSection.style.display = 'block';
+        
+        // Scroll suave hacia los resultados
+        finalSection.scrollIntoView({ behavior: 'smooth' });
     }
 
     newTournament() {
@@ -745,6 +831,12 @@ class RoundRobinTournament {
         document.getElementById('setup-section').style.display = 'block';
         document.getElementById('fight-section').style.display = 'none';
         document.getElementById('tournament-result-modal').style.display = 'none';
+        
+        // Ocultar sección de resultados finales si existe
+        const finalSection = document.getElementById('final-results-section');
+        if (finalSection) {
+            finalSection.style.display = 'none';
+        }
         
         // Limpiar displays
         document.getElementById('standings-body').innerHTML = '';
@@ -1062,7 +1154,7 @@ class RoundRobinTournament {
 
 // Inicializar la aplicación cuando se carga la página
 document.addEventListener('DOMContentLoaded', function() {
-    new RoundRobinTournament();
+    tournament = new RoundRobinTournament();
 });
 
 // Funcionalidad adicional para cerrar modal al hacer clic fuera
@@ -1072,3 +1164,5 @@ window.addEventListener('click', function(event) {
         modal.style.display = 'none';
     }
 });
+
+// Variable tournament ya declarada al inicio del archivo
