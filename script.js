@@ -1449,6 +1449,9 @@ class RoundRobinTournament {
                 judge4: null
             }
         });
+        
+        // Actualizar currentFightIndex para apuntar a la pelea final
+        this.currentFightIndex = this.fights.length - 1;
     }
 
     nextPhase() {
@@ -1459,6 +1462,8 @@ class RoundRobinTournament {
                 this.currentPhase = 'final';
                 document.getElementById('current-phase').textContent = 'FINAL';
                 document.getElementById('next-phase').style.display = 'none';
+                // Asegurar que la sección de peleas esté visible para la final
+                document.getElementById('fight-section').style.display = 'block';
                 this.updateBracketsDisplay();
                 this.loadCurrentFight();
             } else {
