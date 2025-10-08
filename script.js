@@ -447,29 +447,34 @@ class RoundRobinTournament {
 
         let winner, victoryPoints, judgePoints;
 
-        // Determinar resultado
-        if (votes.fighter1 > votes.fighter2 && votes.fighter1 > votes.tie) {
-            // Fighter 1 gana (tiene más votos que el fighter 2 Y más que empates)
+        // Determinar resultado - MAYORÍA DE VOTOS gana
+        if (votes.tie > votes.fighter1 && votes.tie > votes.fighter2) {
+            // EMPATE tiene mayoría de votos
+            winner = 'Empate';
+            victoryPoints = `${fighter1.name}: 1 pt, ${fighter2.name}: 1 pt`;
+            judgePoints = `${fighter1.name}: +${votes.fighter1} pts, ${fighter2.name}: +${votes.fighter2} pts`;
+        } else if (votes.fighter1 > votes.fighter2 && votes.fighter1 > votes.tie) {
+            // Fighter 1 tiene mayoría absoluta
             winner = `${fighter1.name} (Ganador)`;
             victoryPoints = `${fighter1.name}: 3 pts, ${fighter2.name}: 0 pts`;
             judgePoints = `${fighter1.name}: +${votes.fighter1} pts, ${fighter2.name}: +${votes.fighter2} pts`;
         } else if (votes.fighter2 > votes.fighter1 && votes.fighter2 > votes.tie) {
-            // Fighter 2 gana (tiene más votos que el fighter 1 Y más que empates)
+            // Fighter 2 tiene mayoría absoluta
             winner = `${fighter2.name} (Ganador)`;
             victoryPoints = `${fighter2.name}: 3 pts, ${fighter1.name}: 0 pts`;
             judgePoints = `${fighter2.name}: +${votes.fighter2} pts, ${fighter1.name}: +${votes.fighter1} pts`;
         } else if (votes.fighter1 > votes.fighter2) {
-            // Fighter 1 tiene más votos que fighter 2, aunque haya empates
+            // Fighter 1 tiene más votos que fighter 2 (pero empate también puede tener votos)
             winner = `${fighter1.name} (Ganador)`;
             victoryPoints = `${fighter1.name}: 3 pts, ${fighter2.name}: 0 pts`;
             judgePoints = `${fighter1.name}: +${votes.fighter1} pts, ${fighter2.name}: +${votes.fighter2} pts`;
         } else if (votes.fighter2 > votes.fighter1) {
-            // Fighter 2 tiene más votos que fighter 1, aunque haya empates
+            // Fighter 2 tiene más votos que fighter 1 (pero empate también puede tener votos)
             winner = `${fighter2.name} (Ganador)`;
             victoryPoints = `${fighter2.name}: 3 pts, ${fighter1.name}: 0 pts`;
             judgePoints = `${fighter2.name}: +${votes.fighter2} pts, ${fighter1.name}: +${votes.fighter1} pts`;
         } else {
-            // Empate real (mismo número de votos para ambos fighters)
+            // Empate real (fighter1 y fighter2 tienen mismo número de votos)
             winner = 'Empate';
             victoryPoints = `${fighter1.name}: 1 pt, ${fighter2.name}: 1 pt`;
             judgePoints = `${fighter1.name}: +${votes.fighter1} pts, ${fighter2.name}: +${votes.fighter2} pts`;
@@ -510,33 +515,40 @@ class RoundRobinTournament {
         fighter1.fights++;
         fighter2.fights++;
 
-        // Asignar puntos de victoria/empate
-        if (votes.fighter1 > votes.fighter2 && votes.fighter1 > votes.tie) {
-            // Fighter 1 gana claramente (más votos que fighter 2 Y más que empates)
+        // Asignar puntos de victoria/empate - MAYORÍA DE VOTOS gana
+        if (votes.tie > votes.fighter1 && votes.tie > votes.fighter2) {
+            // EMPATE tiene mayoría de votos
+            fighter1.ties++;
+            fighter2.ties++;
+            fighter1.victoryPoints += 1;
+            fighter2.victoryPoints += 1;
+            currentFight.result = 'Empate';
+        } else if (votes.fighter1 > votes.fighter2 && votes.fighter1 > votes.tie) {
+            // Fighter 1 tiene mayoría absoluta
             fighter1.wins++;
             fighter1.victoryPoints += 3;
             fighter2.losses++;
             currentFight.result = `${fighter1.name} ganó`;
         } else if (votes.fighter2 > votes.fighter1 && votes.fighter2 > votes.tie) {
-            // Fighter 2 gana claramente (más votos que fighter 1 Y más que empates)
+            // Fighter 2 tiene mayoría absoluta
             fighter2.wins++;
             fighter2.victoryPoints += 3;
             fighter1.losses++;
             currentFight.result = `${fighter2.name} ganó`;
         } else if (votes.fighter1 > votes.fighter2) {
-            // Fighter 1 tiene más votos que fighter 2, aunque haya empates
+            // Fighter 1 tiene más votos que fighter 2 (pero empate también puede tener votos)
             fighter1.wins++;
             fighter1.victoryPoints += 3;
             fighter2.losses++;
             currentFight.result = `${fighter1.name} ganó`;
         } else if (votes.fighter2 > votes.fighter1) {
-            // Fighter 2 tiene más votos que fighter 1, aunque haya empates
+            // Fighter 2 tiene más votos que fighter 1 (pero empate también puede tener votos)
             fighter2.wins++;
             fighter2.victoryPoints += 3;
             fighter1.losses++;
             currentFight.result = `${fighter2.name} ganó`;
         } else {
-            // Empate real (mismo número de votos para ambos fighters)
+            // Empate real (fighter1 y fighter2 tienen mismo número de votos)
             fighter1.ties++;
             fighter2.ties++;
             fighter1.victoryPoints += 1;
