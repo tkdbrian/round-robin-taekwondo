@@ -1414,59 +1414,9 @@ header h1 i {
         min-width: 150px !important;
         max-width: 180px !important;
         width: 150px !important;
+        height: auto !important;
+        max-height: 200px !important;
         border-radius: 10px !important;
-    }
-    
-    .timer-content {
-        padding: 5px !important;
-    }
-    
-    .timer-display {
-        font-size: 1.2rem !important;
-        padding: 5px !important;
-        margin-bottom: 5px !important;
-        border-radius: 8px !important;
-    }
-    
-    .timer-controls {
-        flex-direction: column !important;
-        gap: 2px !important;
-        margin-bottom: 5px !important;
-    }
-    
-    .timer-btn {
-        font-size: 0.6rem !important;
-        padding: 3px 2px !important;
-        min-width: auto !important;
-        width: 100% !important;
-    }
-    
-    .timer-settings {
-        margin-top: 3px !important;
-    }
-    
-    .timer-settings select {
-        font-size: 0.6rem !important;
-        padding: 2px !important;
-        width: 100% !important;
-    }
-    
-    .timer-header {
-        padding: 3px 5px !important;
-        font-size: 0.8rem !important;
-    }
-}
-
-@media screen and (max-width: 480px) {
-    .floating-timer {
-        top: 5px !important;
-        right: 5px !important;
-        bottom: auto !important;
-        left: auto !important;
-        min-width: 120px !important;
-        max-width: 150px !important;
-        width: 120px !important;
-        border-radius: 8px !important;
     }
     
     .timer-content {
@@ -1478,9 +1428,11 @@ header h1 i {
         padding: 3px !important;
         margin-bottom: 3px !important;
         border-radius: 6px !important;
+        border: 1px solid #34495e !important;
     }
     
     .timer-controls {
+        flex-direction: column !important;
         gap: 1px !important;
         margin-bottom: 3px !important;
     }
@@ -1488,22 +1440,97 @@ header h1 i {
     .timer-btn {
         font-size: 0.5rem !important;
         padding: 2px 1px !important;
+        min-width: auto !important;
+        width: 100% !important;
+        margin: 0 !important;
     }
     
-    .timer-header {
-        padding: 2px 3px !important;
-        font-size: 0.7rem !important;
-    }
-    
-    .timer-minimize {
-        width: 15px !important;
-        height: 15px !important;
-        font-size: 0.8rem !important;
+    .timer-settings {
+        margin-top: 2px !important;
+        margin-bottom: 0 !important;
     }
     
     .timer-settings select {
         font-size: 0.5rem !important;
         padding: 1px !important;
+        width: 100% !important;
+        margin: 0 !important;
+    }
+    
+    .timer-settings label {
+        font-size: 0.5rem !important;
+        margin: 0 !important;
+    }
+    
+    .timer-header {
+        padding: 2px 3px !important;
+        font-size: 0.6rem !important;
+        margin: 0 !important;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .floating-timer {
+        top: 5px !important;
+        right: 5px !important;
+        bottom: auto !important;
+        left: auto !important;
+        min-width: 120px !important;
+        max-width: 140px !important;
+        width: 120px !important;
+        height: auto !important;
+        max-height: 150px !important;
+        border-radius: 8px !important;
+    }
+    
+    .timer-content {
+        padding: 2px !important;
+    }
+    
+    .timer-display {
+        font-size: 0.8rem !important;
+        padding: 2px !important;
+        margin-bottom: 2px !important;
+        border-radius: 4px !important;
+        border: 1px solid #34495e !important;
+    }
+    
+    .timer-controls {
+        gap: 1px !important;
+        margin-bottom: 2px !important;
+    }
+    
+    .timer-btn {
+        font-size: 0.4rem !important;
+        padding: 1px !important;
+        margin: 0 !important;
+    }
+    
+    .timer-header {
+        padding: 1px 2px !important;
+        font-size: 0.5rem !important;
+        margin: 0 !important;
+    }
+    
+    .timer-minimize {
+        width: 12px !important;
+        height: 12px !important;
+        font-size: 0.6rem !important;
+    }
+    
+    .timer-settings {
+        margin: 0 !important;
+    }
+    
+    .timer-settings select {
+        font-size: 0.4rem !important;
+        padding: 0px !important;
+        margin: 0 !important;
+    }
+    
+    .timer-settings label {
+        font-size: 0.4rem !important;
+        margin: 0 !important;
     }
 }
 
