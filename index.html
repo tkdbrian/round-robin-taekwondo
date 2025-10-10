@@ -8,6 +8,35 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
+    <!-- Cronómetro Flotante -->
+    <div id="floating-timer" class="floating-timer" style="display: none;">
+        <div class="timer-header">
+            <span class="timer-title">⏱️ Cronómetro</span>
+            <button id="timer-minimize" class="timer-minimize">−</button>
+        </div>
+        <div class="timer-content">
+            <div class="timer-display" id="timer-display">02:00</div>
+            <div class="timer-controls">
+                <button id="timer-start" class="timer-btn start-btn">▶️ Iniciar</button>
+                <button id="timer-pause" class="timer-btn pause-btn" style="display: none;">⏸️ Pausar</button>
+                <button id="timer-reset" class="timer-btn reset-btn">🔄 Reset</button>
+                <button id="timer-stop" class="timer-btn stop-btn">⏹️ Finalizar</button>
+            </div>
+            <div class="timer-settings">
+                <label for="timer-minutes">Tiempo:</label>
+                <select id="timer-minutes">
+                    <option value="1">1 min</option>
+                    <option value="1.5">1:30 min</option>
+                    <option value="2" selected>2 min</option>
+                    <option value="2.5">2:30 min</option>
+                    <option value="3">3 min</option>
+                    <option value="4">4 min</option>
+                    <option value="5">5 min</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <header>
             <h1><i class="fas fa-trophy"></i> Sistema Round Robin - Taekwon-Do</h1>
@@ -87,6 +116,29 @@
                         <option value="Pesado 1">Pesado 1</option>
                         <option value="Pesado 2">Pesado 2</option>
                     </select>
+                </div>
+
+                <div class="category-row">
+                    <div class="category-input">
+                        <label>⏱️ Tiempo de Pelea:</label>
+                        <select id="fight-duration">
+                            <option value="60">1 minuto</option>
+                            <option value="90">1 minuto 30 segundos</option>
+                            <option value="120" selected>2 minutos</option>
+                            <option value="150">2 minutos 30 segundos</option>
+                            <option value="180">3 minutos</option>
+                            <option value="240">4 minutos</option>
+                            <option value="300">5 minutos</option>
+                        </select>
+                    </div>
+                    
+                    <div class="category-input">
+                        <label>🔔 Avisos:</label>
+                        <select id="timer-warnings">
+                            <option value="true" selected>Con avisos (30s y 10s)</option>
+                            <option value="false">Sin avisos</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 

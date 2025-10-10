@@ -19,7 +19,18 @@ class RoundRobinTournament {
             ageFrom: '',
             ageTo: '',
             beltCategory: '',
-            weightCategory: ''
+            weightCategory: '',
+            fightDuration: 120, // 2 minutos por defecto
+            timerWarnings: true
+        };
+        
+        // Cronómetro
+        this.timer = {
+            seconds: 120,
+            originalSeconds: 120,
+            isRunning: false,
+            intervalId: null,
+            isMinimized: false
         };
         
         this.initializeEventListeners();
@@ -48,6 +59,20 @@ class RoundRobinTournament {
         // Modal
         document.getElementById('close-tournament-modal').addEventListener('click', () => this.closeTournamentModal());
         document.getElementById('new-tournament').addEventListener('click', () => this.newTournament());
+        
+        // Cronómetro
+        document.getElementById('timer-start').addEventListener('click', () => this.startTimer());
+        document.getElementById('timer-pause').addEventListener('click', () => this.pauseTimer());
+        document.getElementById('timer-reset').addEventListener('click', () => this.resetTimer());
+        document.getElementById('timer-stop').addEventListener('click', () => this.stopTimer());
+        document.getElementById('timer-minimize').addEventListener('click', () => this.toggleTimerMinimize());
+        document.getElementById('timer-minutes').addEventListener('change', (e) => this.setTimerDuration(e.target.value));
+        
+        // Hacer el cronómetro arrastrable
+        this.makeTimerDraggable();
+        
+        // Inicializar controles del cronómetro
+        this.initializeTimer();
         document.getElementById('export-results').addEventListener('click', () => this.exportResults());
         
         // Manejo de categoría personalizada
@@ -110,8 +135,20 @@ class RoundRobinTournament {
             beltCategory: document.getElementById('belt-category').value === 'Personalizada' 
                 ? document.getElementById('custom-belt-text').value 
                 : document.getElementById('belt-category').value,
-            weightCategory: document.getElementById('weight-category').value
+            weightCategory: document.getElementById('weight-category').value,
+            fightDuration: parseInt(document.getElementById('fight-duration').value),
+            timerWarnings: document.getElementById('timer-warnings').value === 'true'
         };
+
+        // Configurar cronómetro con el tiempo seleccionado
+        this.timer.originalSeconds = this.categoryInfo.fightDuration;
+        this.timer.seconds = this.categoryInfo.fightDuration;
+        
+        // Actualizar selector del cronómetro
+        const timerSelect = document.getElementById('timer-minutes');
+        timerSelect.value = Math.floor(this.categoryInfo.fightDuration / 60);
+        
+        this.updateTimerDisplay();
 
         // Validar información de categoría
         if (!this.categoryInfo.ageFrom || !this.categoryInfo.ageTo) {
@@ -376,28 +413,111 @@ class RoundRobinTournament {
         tournamentInfo.style.display = 'block';
     }
 
-    checkForTieAndCreateTiebreaker() {
-        // Ordenar competidores según las reglas actuales
-        const sortedCompetitors = [...this.competitors].sort((a, b) => {
+    // Función estándar para ordenar competidores según reglas oficiales de Taekwon-Do
+    sortCompetitorsByRanking(competitors) {
+        return [...competitors].sort((a, b) => {
+            // 1º CRITERIO: Número de peleas GANADAS
+            if (b.wins !== a.wins) {
+                return b.wins - a.wins;
+            }
+            // 2º CRITERIO: Puntos de jueces (solo si empatan en ganadas)
+            if (b.judgePoints !== a.judgePoints) {
+                return b.judgePoints - a.judgePoints;
+            }
+            // 3º CRITERIO: Desempates ganados (si los hay)
+            const aTiebreakers = a.tiebreakerWins || 0;
+            const bTiebreakers = b.tiebreakerWins || 0;
+            if (bTiebreakers !== aTiebreakers) {
+                return bTiebreakers - aTiebreakers;
+            }
+            // 4º CRITERIO: Puntos de victoria como último recurso
             if (b.victoryPoints !== a.victoryPoints) {
                 return b.victoryPoints - a.victoryPoints;
             }
-            return b.judgePoints - a.judgePoints;
+            // 5º CRITERIO: Orden alfabético
+            return a.name.localeCompare(b.name);
         });
+    }
 
-        // Verificar si los dos primeros están empatados
+    checkForTieAndCreateTiebreaker() {
+        // Ordenar competidores usando la función estándar
+        const sortedCompetitors = this.sortCompetitorsByRanking(this.competitors);
+
+        // Encontrar TODOS los competidores empatados en el primer lugar
         const first = sortedCompetitors[0];
-        const second = sortedCompetitors[1];
+        const tiedCompetitors = sortedCompetitors.filter(competitor => 
+            competitor.wins === first.wins && 
+            competitor.judgePoints === first.judgePoints
+        );
 
-        if (first.victoryPoints === second.victoryPoints && 
-            first.judgePoints === second.judgePoints) {
+        // Si hay más de 1 competidor empatado
+        if (tiedCompetitors.length > 1) {
             
-            // HAY EMPATE - Crear combate de desempate
-            this.createTiebreakerFight(first, second);
-            return true;
+            // CASO ESPECIAL: Si TODOS los competidores están empatados, reiniciar torneo
+            if (tiedCompetitors.length === this.competitors.length) {
+                this.restartEntireTournament();
+                return true;
+            }
+            
+            // CASO NORMAL: Solo 2 empatados - crear pelea de desempate
+            if (tiedCompetitors.length === 2) {
+                this.createTiebreakerFight(tiedCompetitors[0], tiedCompetitors[1]);
+                return true;
+            }
+            
+            // Si hay 3+ empatados (pero no todos), NO hacer nada - quedan empatados
+            // El torneo termina con empate múltiple
         }
 
-        return false; // No hay empate
+        return false; // No hay empate que requiera acción
+    }
+
+    restartEntireTournament() {
+        alert(`🔄 EMPATE TOTAL\n\n` +
+              `TODOS los competidores están empatados con los mismos puntos.\n\n` +
+              `Se reiniciará completamente el torneo.\n\n` +
+              `Todos los competidores volverán a pelear desde cero.`);
+
+        // Reiniciar estadísticas de todos los competidores
+        this.competitors.forEach(competitor => {
+            competitor.wins = 0;
+            competitor.losses = 0;
+            competitor.ties = 0;
+            competitor.fights = 0;
+            competitor.victoryPoints = 0;
+            competitor.judgePoints = 0;
+            competitor.tiebreakerWins = 0;
+        });
+
+        // Limpiar todas las peleas y recrear el Round Robin original
+        this.fights = [];
+        this.currentFightIndex = 0;
+        this.judgeDecisions = {};
+
+        // Recrear las peleas del Round Robin original
+        this.generateFightSchedule();
+
+        // Actualizar displays
+        this.updateScheduleDisplay();
+        this.saveToLocalStorage();
+
+        // Ocultar el modal de resultados si está abierto
+        const resultsModal = document.getElementById('results-modal');
+        if (resultsModal && resultsModal.style.display === 'block') {
+            resultsModal.style.display = 'none';
+        }
+
+        // Mostrar la sección de peleas
+        document.getElementById('fight-section').style.display = 'block';
+
+        // Cargar la primera pelea
+        this.loadCurrentFight();
+
+        // Actualizar la interfaz después de un breve retraso
+        setTimeout(() => {
+            this.updateStandings();
+            this.updateScheduleDisplay();
+        }, 100);
     }
 
     createTiebreakerFight(fighter1, fighter2) {
@@ -429,7 +549,7 @@ class RoundRobinTournament {
         this.saveToLocalStorage();
         
         // Mostrar mensaje de desempate
-        alert(`🥊 COMBATE DE DESEMPATE\n\n${fighter1.name} vs ${fighter2.name}\n\nAmbos competidores están empatados en:\n• Victorias: ${fighter1.victoryPoints}\n• Jueces: ${fighter1.judgePoints}\n\n¡Se realizará un combate final para determinar el ganador!`);
+        alert(`🥊 COMBATE DE DESEMPATE\n\n${fighter1.name} vs ${fighter2.name}\n\nAmbos competidores están empatados en:\n• Peleas Ganadas: ${fighter1.wins}\n• Puntos de Jueces: ${fighter1.judgePoints}\n\n¡Se realizará un combate final para determinar el ganador de la llave!`);
         
         // Cargar el combate de desempate
         this.loadCurrentFight();
@@ -607,12 +727,23 @@ class RoundRobinTournament {
 
         let winner, victoryPoints, judgePoints;
 
+        // VERIFICAR SI ES PELEA FINAL - NO PUEDE HABER EMPATES
+        const isFinale = this.isFinalFight(currentFight);
+        
         // Determinar resultado - MAYORÍA DE VOTOS gana
         if (votes.tie > votes.fighter1 && votes.tie > votes.fighter2) {
             // EMPATE tiene mayoría de votos
-            winner = 'Empate';
-            victoryPoints = `${fighter1.name}: 1 pt, ${fighter2.name}: 1 pt`;
-            judgePoints = `${fighter1.name}: +${votes.fighter1} pts, ${fighter2.name}: +${votes.fighter2} pts`;
+            if (isFinale) {
+                // Es pelea final pero jueces vieron empate - PERMITIR pero crear nueva pelea
+                winner = '⚡ EMPATE - Nueva pelea requerida';
+                victoryPoints = 'Los competidores deberán pelear nuevamente';
+                judgePoints = `Votos: ${fighter1.name}: ${votes.fighter1}, ${fighter2.name}: ${votes.fighter2}, Empates: ${votes.tie}`;
+            } else {
+                // Empate normal en ronda clasificatoria
+                winner = 'Empate';
+                victoryPoints = `${fighter1.name}: 1 pt, ${fighter2.name}: 1 pt`;
+                judgePoints = `${fighter1.name}: +${votes.fighter1} pts, ${fighter2.name}: +${votes.fighter2} pts`;
+            }
         } else if (votes.fighter1 > votes.fighter2 && votes.fighter1 > votes.tie) {
             // Fighter 1 tiene mayoría absoluta
             winner = `${fighter1.name} (Ganador)`;
@@ -635,15 +766,42 @@ class RoundRobinTournament {
             judgePoints = `${fighter2.name}: +${votes.fighter2} pts, ${fighter1.name}: +${votes.fighter1} pts`;
         } else {
             // Empate real (fighter1 y fighter2 tienen mismo número de votos)
-            winner = 'Empate';
-            victoryPoints = `${fighter1.name}: 1 pt, ${fighter2.name}: 1 pt`;
-            judgePoints = `${fighter1.name}: +${votes.fighter1} pts, ${fighter2.name}: +${votes.fighter2} pts`;
+            if (isFinale) {
+                // En pelea final pero empate real - PERMITIR confirmar y crear nueva pelea
+                winner = '⚡ EMPATE - Nueva pelea requerida';
+                victoryPoints = 'Los competidores deberán pelear nuevamente';
+                judgePoints = `Votos: ${fighter1.name}: ${votes.fighter1}, ${fighter2.name}: ${votes.fighter2}, Empates: ${votes.tie}`;
+            } else {
+                // Empate normal en ronda clasificatoria
+                winner = 'Empate';
+                victoryPoints = `${fighter1.name}: 1 pt, ${fighter2.name}: 1 pt`;
+                judgePoints = `${fighter1.name}: +${votes.fighter1} pts, ${fighter2.name}: +${votes.fighter2} pts`;
+            }
         }
 
         document.getElementById('fight-winner').textContent = winner;
         document.getElementById('victory-points').textContent = victoryPoints;
         document.getElementById('judge-points').textContent = judgePoints;
         document.getElementById('confirm-fight').disabled = false;
+    }
+
+    // Detectar si es una pelea final que NO puede empatar
+    isFinalFight(fight) {
+        // 1. Si es fase final del sistema de brackets (6-8 competidores)
+        // SOLO la pelea final entre ganadores de llave
+        if (this.currentPhase === 'final') {
+            return true;
+        }
+        
+        // 2. Si es pelea de desempate (para determinar ganador de llave)
+        if (fight.isTiebreaker) {
+            return true;
+        }
+        
+        // 3. Las peleas normales de llave SÍ pueden empatar
+        // (Todos contra todos dentro de cada llave permite empates)
+        
+        return false;
     }
 
     confirmFight() {
@@ -727,6 +885,48 @@ class RoundRobinTournament {
         currentFight.completedAt = new Date(); // Agregar timestamp
         currentFight.judgeVotes = { ...decisions };
 
+        // VERIFICAR SI ES PELEA FINAL CON EMPATE - Crear nueva pelea automáticamente
+        const isFinale = this.isFinalFight(currentFight);
+        const isDrawResult = currentFight.result === 'Empate';
+        
+        if (isFinale && isDrawResult) {
+            // Es pelea final y terminó en empate - crear nueva pelea
+            alert(`⚡ EMPATE EN PELEA FINAL\n\n` +
+                  `${fighter1.name} vs ${fighter2.name} empataron.\n\n` +
+                  `Se creará automáticamente una nueva pelea entre los mismos competidores.\n\n` +
+                  `Esta nueva pelea será la definitiva para determinar el ganador.`);
+            
+            // Crear nueva pelea entre los mismos competidores
+            const newFight = {
+                fighter1Index: currentFight.fighter1Index,
+                fighter2Index: currentFight.fighter2Index,
+                fighter1Name: fighter1.name,
+                fighter2Name: fighter2.name,
+                completed: false,
+                result: null,
+                isTiebreaker: true, // Marcar como pelea de desempate
+                isFinal: currentFight.isFinal || false,
+                bracket: currentFight.bracket || null
+            };
+            
+            // Agregar la nueva pelea
+            this.fights.push(newFight);
+            
+            // No avanzar el índice, se queda en la nueva pelea
+            this.currentFightIndex = this.fights.length - 1;
+            
+            // Actualizar displays
+            this.updateStandings();
+            this.updateFightHistory();
+            this.updateScheduleDisplay();
+            this.saveToLocalStorage();
+            this.createBackupCopy();
+            
+            // Cargar la nueva pelea
+            this.loadCurrentFight();
+            return;
+        }
+
         // Avanzar a siguiente pelea
         this.currentFightIndex++;
         
@@ -740,6 +940,7 @@ class RoundRobinTournament {
         this.updateFightHistory();
         this.updateScheduleDisplay();
         this.saveToLocalStorage(); // Auto-guardar progreso
+        this.createBackupCopy(); // Backup adicional
         
         // Si es sistema de llaves, actualizar brackets
         if (this.competitorCount > 5) {
@@ -978,11 +1179,11 @@ class RoundRobinTournament {
         } else {
             // Sistema Round Robin tradicional
             const sortedCompetitors = [...this.competitors].sort((a, b) => {
-                // Primero: Por victorias (combates ganados)
+                // Primero: Por puntos del sistema 3-1-0 (victoryPoints)
                 if (b.victoryPoints !== a.victoryPoints) {
                     return b.victoryPoints - a.victoryPoints;
                 }
-                // En empate: Por jueces
+                // En empate: Por puntos de jueces como desempate
                 return b.judgePoints - a.judgePoints;
             });
 
@@ -994,8 +1195,7 @@ class RoundRobinTournament {
                             <tr style="background: #3498db; color: white;">
                                 <th style="padding: 10px;">Pos</th>
                                 <th style="padding: 10px;">Competidor</th>
-                                <th style="padding: 10px;">Victorias</th>
-                                <th style="padding: 10px;">Pts Jueces</th>
+                                <th style="padding: 10px;">Puntos</th>
                                 <th style="padding: 10px;">G-E-P</th>
                             </tr>
                         </thead>
@@ -1005,7 +1205,6 @@ class RoundRobinTournament {
                                     <td style="padding: 10px; text-align: center;">${index + 1}°</td>
                                     <td style="padding: 10px;">${competitor.name}</td>
                                     <td style="padding: 10px; text-align: center;"><strong>${competitor.victoryPoints}</strong></td>
-                                    <td style="padding: 10px; text-align: center;">${competitor.judgePoints}</td>
                                     <td style="padding: 10px; text-align: center;">${competitor.wins}-${competitor.ties}-${competitor.losses}</td>
                                 </tr>
                             `).join('')}
@@ -1844,6 +2043,38 @@ class RoundRobinTournament {
         console.log('✅ Torneo guardado automáticamente');
     }
 
+    createBackupCopy() {
+        try {
+            // Crear backup con timestamp
+            const backupKey = `taekwondo_backup_${Date.now()}`;
+            const mainData = localStorage.getItem('taekwondo_tournament');
+            if (mainData) {
+                localStorage.setItem(backupKey, mainData);
+                console.log('🔒 Backup de seguridad creado');
+                
+                // Mantener solo los 3 backups más recientes
+                this.cleanOldBackups();
+            }
+        } catch (error) {
+            console.warn('⚠️ No se pudo crear backup:', error);
+        }
+    }
+
+    cleanOldBackups() {
+        try {
+            const keys = Object.keys(localStorage);
+            const backupKeys = keys.filter(key => key.startsWith('taekwondo_backup_'))
+                                 .sort((a, b) => b.localeCompare(a)); // Más recientes primero
+            
+            // Eliminar backups antiguos, mantener solo 3
+            backupKeys.slice(3).forEach(key => {
+                localStorage.removeItem(key);
+            });
+        } catch (error) {
+            console.warn('⚠️ Error limpiando backups antiguos:', error);
+        }
+    }
+
     loadFromLocalStorage() {
         const saved = localStorage.getItem('taekwondo_tournament');
         if (saved) {
@@ -1909,6 +2140,248 @@ class RoundRobinTournament {
                 this.loadCurrentFight();
             }
         }
+    }
+
+    // ========== FUNCIONES DEL CRONÓMETRO ==========
+    
+    initializeTimer() {
+        this.updateTimerDisplay();
+        this.showTimer();
+    }
+    
+    showTimer() {
+        document.getElementById('floating-timer').style.display = 'block';
+    }
+    
+    hideTimer() {
+        document.getElementById('floating-timer').style.display = 'none';
+    }
+    
+    startTimer() {
+        if (!this.timer.isRunning) {
+            this.timer.isRunning = true;
+            
+            // Usar try-catch para máxima seguridad
+            try {
+                this.timer.intervalId = setInterval(() => {
+                    this.timer.seconds--;
+                    this.updateTimerDisplay();
+                    this.checkTimerWarnings();
+                    
+                    if (this.timer.seconds <= 0) {
+                        this.stopTimer();
+                        this.onTimerFinished();
+                    }
+                }, 1000);
+                
+                // Actualizar botones de forma segura
+                const startBtn = document.getElementById('timer-start');
+                const pauseBtn = document.getElementById('timer-pause');
+                if (startBtn) startBtn.style.display = 'none';
+                if (pauseBtn) pauseBtn.style.display = 'inline-block';
+            } catch (e) {
+                console.error('Error en cronómetro:', e);
+                this.timer.isRunning = false;
+            }
+        }
+    }
+    
+    pauseTimer() {
+        if (this.timer.isRunning) {
+            this.timer.isRunning = false;
+            
+            try {
+                if (this.timer.intervalId) {
+                    clearInterval(this.timer.intervalId);
+                    this.timer.intervalId = null;
+                }
+                
+                // Actualizar botones de forma segura
+                const startBtn = document.getElementById('timer-start');
+                const pauseBtn = document.getElementById('timer-pause');
+                if (startBtn) startBtn.style.display = 'inline-block';
+                if (pauseBtn) pauseBtn.style.display = 'none';
+            } catch (e) {
+                console.error('Error pausando cronómetro:', e);
+            }
+        }
+    }
+    
+    resetTimer() {
+        this.pauseTimer();
+        this.timer.seconds = this.timer.originalSeconds;
+        this.updateTimerDisplay();
+        this.clearTimerWarnings();
+    }
+    
+    stopTimer() {
+        this.pauseTimer();
+        // Finalizar sin confirmación para evitar interrupciones
+        this.onTimerFinished();
+    }
+    
+    onTimerFinished() {
+        console.log('TIEMPO FINALIZADO');
+        // Solo log - sin alertas que puedan interrumpir
+    }
+    
+    clearTimerWarnings() {
+        const timerDisplay = document.getElementById('timer-display');
+        if (timerDisplay) {
+            timerDisplay.className = 'timer-display';
+        }
+    }
+    
+    setTimerDuration(minutes) {
+        const seconds = Math.floor(parseFloat(minutes) * 60);
+        this.timer.originalSeconds = seconds;
+        this.timer.seconds = seconds;
+        this.updateTimerDisplay();
+    }
+    
+    updateTimerDisplay() {
+        const minutes = Math.floor(this.timer.seconds / 60);
+        const seconds = this.timer.seconds % 60;
+        const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        const timerDisplay = document.getElementById('timer-display');
+        if (timerDisplay) {
+            timerDisplay.textContent = display;
+            
+            // Cambiar colores según el tiempo restante - SIMPLE Y SEGURO
+            timerDisplay.className = 'timer-display';
+            if (this.timer.seconds <= 10) {
+                timerDisplay.classList.add('danger');
+            } else if (this.timer.seconds <= 30) {
+                timerDisplay.classList.add('warning');
+            }
+        }
+    }
+    
+    checkTimerWarnings() {
+        // Solo avisos simples - sin sobrecargar el sistema
+        if (!this.categoryInfo.timerWarnings) return;
+        
+        if (this.timer.seconds === 30) {
+            console.log('30 segundos restantes');
+        } else if (this.timer.seconds === 10) {
+            console.log('10 segundos restantes');
+            // Solo cambio de color, sin animaciones pesadas
+        }
+    }
+    
+    showTimerAlert(message, type) {
+        // Crear notificación temporal
+        const alert = document.createElement('div');
+        alert.className = `timer-alert timer-alert-${type}`;
+        alert.textContent = message;
+        alert.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: ${type === 'danger' ? '#e74c3c' : '#f39c12'};
+            color: white;
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            z-index: 2000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            animation: alertPulse 0.5s ease-in-out;
+        `;
+        
+        document.body.appendChild(alert);
+        
+        // Reproducir sonido si es posible
+        this.playTimerSound(type);
+        
+        // Remover después de 2 segundos
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.parentNode.removeChild(alert);
+            }
+        }, 2000);
+    }
+    
+    playTimerSound(type) {
+        // Crear audio context para sonidos
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = type === 'danger' ? 800 : 600;
+            oscillator.type = 'square';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        } catch (e) {
+            console.log('Audio no disponible');
+        }
+    }
+    
+    clearTimerWarnings() {
+        const timerDisplay = document.getElementById('timer-display');
+        timerDisplay.className = 'timer-display';
+    }
+    
+    onTimerFinished() {
+        this.showTimerAlert('🔚 TIEMPO FINALIZADO', 'danger');
+        // Opcional: avanzar automáticamente o requerir confirmación manual
+    }
+    
+    toggleTimerMinimize() {
+        const timer = document.getElementById('floating-timer');
+        const button = document.getElementById('timer-minimize');
+        
+        this.timer.isMinimized = !this.timer.isMinimized;
+        
+        if (this.timer.isMinimized) {
+            timer.classList.add('minimized');
+            button.textContent = '+';
+        } else {
+            timer.classList.remove('minimized');
+            button.textContent = '−';
+        }
+    }
+    
+    makeTimerDraggable() {
+        const timer = document.getElementById('floating-timer');
+        const header = timer.querySelector('.timer-header');
+        let isDragging = false;
+        let startX, startY, initialX, initialY;
+        
+        header.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            initialX = timer.offsetLeft;
+            initialY = timer.offsetTop;
+            header.style.cursor = 'grabbing';
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            
+            timer.style.left = `${initialX + deltaX}px`;
+            timer.style.top = `${initialY + deltaY}px`;
+            timer.style.right = 'auto';
+        });
+        
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            header.style.cursor = 'move';
+        });
     }
 }
 
