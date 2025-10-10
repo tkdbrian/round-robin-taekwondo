@@ -1,0 +1,58 @@
+🥋 SISTEMA DE TORNEO TAEKWON-DO - INSTRUCCIONES DE USO PORTABLE
+================================================================
+
+📋 PREPARACIÓN ANTES DEL TORNEO:
+--------------------------------
+1. Copiar toda la carpeta "portable" a una USB
+2. Probar en la PC del torneo ANTES del evento
+3. Tener un navegador actualizado (Chrome/Firefox recomendado)
+
+🖥️ REQUISITOS MÍNIMOS DE LA PC:
+-------------------------------
+- Windows 7 o superior
+- Cualquier navegador moderno (Chrome 60+, Firefox 50+, Edge)
+- JavaScript habilitado (por defecto está habilitado)
+- Resolución mínima: 1024x768
+- NO requiere internet una vez copiado
+
+🚀 CÓMO USAR EN EL TORNEO:
+-------------------------
+1. Insertar USB en la PC del torneo
+2. Abrir la carpeta "portable"
+3. Hacer doble clic en "index.html"
+4. El sistema se abre en el navegador
+5. ¡Listo para usar!
+
+⚠️ SOLUCIÓN DE PROBLEMAS:
+------------------------
+SI NO ABRE:
+- Clic derecho en "index.html" → "Abrir con" → Elegir navegador
+- Si no funciona: usar "Iniciar_Taekwondo.bat"
+
+SI SE VE MAL:
+- Presionar F11 para pantalla completa
+- Zoom del navegador al 100% (Ctrl+0)
+
+SI NO GUARDA DATOS:
+- Es normal, se guarda en memoria del navegador
+- No cerrar la pestaña durante el torneo
+
+🔧 ARCHIVOS IMPORTANTES:
+-----------------------
+- index.html = Archivo principal
+- Iniciar_Taekwondo.bat = Iniciador automático
+- script.js = Motor del torneo  
+- styles.css = Diseño visual
+
+💾 BACKUP DE EMERGENCIA:
+-----------------------
+- Los datos se guardan automáticamente en el navegador
+- Si hay problema: anotar resultados en papel como respaldo
+- El sistema funciona sin internet, solo necesita navegador
+
+📞 CONTACTO TÉCNICO:
+-------------------
+GitHub: tkdbrian/round-robin-taekwondo
+Web: tkdbrian.github.io/round-robin-taekwondo/
+
+¡ÉXITO EN TU TORNEO! 🏆
