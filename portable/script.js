@@ -136,6 +136,7 @@ class RoundRobinTournament {
                 ? document.getElementById('custom-belt-text').value 
                 : document.getElementById('belt-category').value,
             weightCategory: document.getElementById('weight-category').value,
+            headJudge: document.getElementById('head-judge').value,
             fightDuration: parseInt(document.getElementById('fight-duration').value),
             timerWarnings: document.getElementById('timer-warnings').value === 'true'
         };
@@ -410,6 +411,10 @@ class RoundRobinTournament {
             <div class="category-item">
                 <h4>Peso</h4>
                 <span>${this.categoryInfo.weightCategory}</span>
+            </div>
+            <div class="category-item">
+                <h4>Jefe de Mesa</h4>
+                <span>${this.categoryInfo.headJudge || 'No especificado'}</span>
             </div>
             <div class="category-item">
                 <h4>Competidores</h4>
