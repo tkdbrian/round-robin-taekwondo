@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Sistema Torneo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Prueba del Sistema de Torneo</h1>
+    <div id="test-results"></div>
+
+    <script>
+        // Crear simulación del sistema de torneo
+        class TournamentTest {
+            constructor() {
+                this.competitors = [
+                    { id: 1, name: 'MILEI', fights: 4, wins: 3, ties: 0, losses: 1, victoryPoints: 9, judgePoints: 12 },
+                    { id: 2, name: 'CHRISTIAN', fights: 4, wins: 2, ties: 1, losses: 1, victoryPoints: 7, judgePoints: 8 },
+                    { id: 3, name: 'TOTO', fights: 4, wins: 2, ties: 1, losses: 1, victoryPoints: 7, judgePoints: 8 },
+                    { id: 4, name: 'JUAN', fights: 4, wins: 2, ties: 0, losses: 2, victoryPoints: 6, judgePoints: 6 },
+                    { id: 5, name: 'PEREZ', fights: 4, wins: 0, ties: 0, losses: 4, victoryPoints: 0, judgePoints: 0 }
+                ];
+                this.currentPhase = 'roundrobin';
+                this.results = [];
+            }
+
+            log(message, type = 'info') {
+                this.results.push({ message, type });
+                console.log(`[${type.toUpperCase()}] ${message}`);
+            }
+
+            // Función de ordenamiento (igual que en el sistema real)
+            sortCompetitorsByRanking(competitors) {
+                return [...competitors].sort((a, b) => {
+                    if (b.victoryPoints !== a.victoryPoints) {
+                        return b.victoryPoints - a.victoryPoints;
+                    }
+                    if (b.judgePoints !== a.judgePoints) {
+                        return b.judgePoints - a.judgePoints;
+                    }
+                    return a.name.localeCompare(b.name);
+                });
+            }
+
+            // Función de detección de empates (igual que en el sistema real)
+            checkForTieAndCreateTiebreaker() {
+                const sortedCompetitors = this.sortCompetitorsByRanking(this.competitors);
+                this.log(`📊 Orden actual: ${sortedCompetitors.map(c => `${c.name}(${c.victoryPoints}pts-${c.judgePoints}j)`).join(', ')}`);
+
+                // Buscar grupos de competidores empatados
+                for (let i = 0; i < sortedCompetitors.length - 1; i++) {
+                    const currentCompetitor = sortedCompetitors[i];
+                    const tiedGroup = [currentCompetitor];
+                    
+                    // Encontrar todos los que están empatados con el actual
+                    for (let j = i + 1; j < sortedCompetitors.length; j++) {
+                        const nextCompetitor = sortedCompetitors[j];
+                        if (currentCompetitor.victoryPoints === nextCompetitor.victoryPoints && 
+                            currentCompetitor.judgePoints === nextCompetitor.judgePoints) {
+                            tiedGroup.push(nextCompetitor);
+                        } else {
+                            break;
+                        }
+                    }
+                    
+                    // Si encontramos un grupo empatado, procesarlo
+                    if (tiedGroup.length >= 2) {
+                        this.log(`⚖️ Empate detectado en posición ${i + 1}: ${tiedGroup.map(c => c.name).join(' vs ')} (${tiedGroup[0].victoryPoints} pts, ${tiedGroup[0].judgePoints} jueces)`, 'info');
+                        
+                        if (tiedGroup.length === this.competitors.length) {
+                            this.log('🔄 EMPATE TOTAL - Se reiniciaría el torneo', 'error');
+                            return true;
+                        }
+                        
+                        if (tiedGroup.length === 2) {
+                            this.log(`🥊 PELEA DE DESEMPATE: ${tiedGroup[0].name} vs ${tiedGroup[1].name}`, 'success');
+                            return true;
+                        }
+                        
+                        this.log(`🟡 Empate técnico de ${tiedGroup.length} competidores - Quedan en posición empatada`, 'info');
+                        i += tiedGroup.length - 1;
+                    }
+                }
+                return false;
+            }
+
+            // Generar tabla con empates técnicos (igual que en el sistema real)
+            generateRankingTable() {
+                const sortedCompetitors = this.sortCompetitorsByRanking(this.competitors);
+                let currentPosition = 1;
+                let displayPosition = 1;
+                
+                this.log('📋 TABLA DE POSICIONES:', 'info');
+                
+                sortedCompetitors.forEach((competitor, index) => {
+                    let isNewGroup = false;
+                    if (index === 0) {
+                        isNewGroup = true;
+                    } else {
+                        const prev = sortedCompetitors[index - 1];
+                        if (competitor.victoryPoints !== prev.victoryPoints || 
+                            competitor.judgePoints !== prev.judgePoints) {
+                            isNewGroup = true;
+                            currentPosition = index + 1;
+                        }
+                    }
+                    
+                    if (isNewGroup) {
+                        displayPosition = currentPosition;
+                    }
+                    
+                    // Verificar cuántos están empatados en este grupo
+                    let tiedCount = 1;
+                    for (let j = index + 1; j < sortedCompetitors.length; j++) {
+                        const next = sortedCompetitors[j];
+                        if (competitor.victoryPoints === next.victoryPoints && 
+                            competitor.judgePoints === next.judgePoints) {
+                            tiedCount++;
+                        } else {
+                            break;
+                        }
+                    }
+                    
+                    // Determinar cómo mostrar la posición
+                    let positionText;
+                    if (tiedCount > 1) {
+                        const endPosition = displayPosition + tiedCount - 1;
+                        positionText = `${displayPosition}°-${endPosition}° (Empate)`;
+                    } else {
+                        positionText = `${displayPosition}°`;
+                    }
+
+                    this.log(`${positionText} ${competitor.name} - ${competitor.victoryPoints} pts, ${competitor.judgePoints} jueces`, 'info');
+                });
+            }
+
+            // Generar podio (igual que en el sistema real)
+            generatePodium() {
+                const sortedCompetitors = this.sortCompetitorsByRanking(this.competitors);
+                const podiumSize = this.currentPhase === 'roundrobin' ? 2 : 3;
+                
+                this.log('🏆 PODIO OFICIAL:', 'success');
+                sortedCompetitors.slice(0, podiumSize).forEach((competitor, index) => {
+                    this.log(`${index + 1}° ${competitor.name} - ${competitor.victoryPoints} puntos, ${competitor.judgePoints} pts jueces`, 'success');
+                });
+                
+                if (this.currentPhase === 'roundrobin') {
+                    this.log('* Sistema Round Robin: Solo se otorgan 1° y 2° puesto oficial', 'info');
+                }
+            }
+
+            runTest() {
+                this.log('🚀 INICIANDO PRUEBA DEL SISTEMA', 'success');
+                this.log(`Competidores: ${this.competitors.length} (Round Robin)`, 'info');
+                
+                this.generateRankingTable();
+                this.generatePodium();
+                
+                const hasTiebreaker = this.checkForTieAndCreateTiebreaker();
+                
+                if (hasTiebreaker) {
+                    this.log('✅ Sistema detectó correctamente la necesidad de desempate', 'success');
+                } else {
+                    this.log('❌ Sistema NO detectó empates que requieran acción', 'error');
+                }
+                
+                this.log('🏁 PRUEBA COMPLETADA', 'success');
+            }
+
+            displayResults() {
+                const container = document.getElementById('test-results');
+                this.results.forEach(result => {
+                    const div = document.createElement('div');
+                    div.className = `test-result ${result.type}`;
+                    div.textContent = result.message;
+                    container.appendChild(div);
+                });
+            }
+        }
+
+        // Ejecutar prueba
+        const test = new TournamentTest();
+        test.runTest();
+        test.displayResults();
+    </script>
+</body>
+</html>

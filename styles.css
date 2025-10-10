@@ -1398,6 +1398,139 @@ header h1 i {
     cursor: pointer;
 }
 
+/* Sistema de Penalizaciones - Versión Compacta */
+.penalties-section {
+    margin-top: 8px;
+    padding: 8px;
+    border-top: 1px solid #ecf0f1;
+    background: rgba(236, 240, 241, 0.3);
+    border-radius: 6px;
+}
+
+.competitors-penalties-horizontal {
+    display: flex;
+    gap: 8px;
+}
+
+.competitor-penalties {
+    flex: 1;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    border: 2px solid #bdc3c7;
+}
+
+.competitor-header {
+    padding: 6px 8px;
+    font-weight: bold;
+    text-align: center;
+    font-size: 11px;
+}
+
+.penalty-controls-compact {
+    background: white;
+    padding: 6px;
+}
+
+.penalty-row-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    font-size: 10px;
+}
+
+.penalty-row-compact:last-child {
+    margin-bottom: 0;
+}
+
+.penalty-row-compact span:first-child {
+    color: #2c3e50;
+    font-weight: 600;
+    min-width: 30px;
+}
+
+.penalty-buttons-compact {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.penalty-btn-small {
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.penalty-btn-small.minus {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+}
+
+.penalty-btn-small.minus:hover {
+    background: linear-gradient(135deg, #c0392b, #a93226);
+    transform: scale(1.1);
+}
+
+.penalty-btn-small.plus {
+    background: linear-gradient(135deg, #27ae60, #229954);
+    color: white;
+}
+
+.penalty-btn-small.plus:hover {
+    background: linear-gradient(135deg, #229954, #1e8449);
+    transform: scale(1.1);
+}
+
+.penalty-count-small {
+    min-width: 20px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 12px;
+    color: #2c3e50;
+    background: #ecf0f1;
+    padding: 2px 4px;
+    border-radius: 3px;
+    border: 1px solid #bdc3c7;
+}
+
+.penalty-total-compact {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    background: linear-gradient(135deg, #34495e, #2c3e50);
+    color: white;
+    padding: 4px;
+    border-radius: 4px;
+    margin-top: 6px;
+}
+
+.penalty-total-compact span {
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.total-count-small {
+    min-width: 20px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 14px;
+    color: #e74c3c;
+    background: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #e74c3c;
+}
+
 .timer-settings select:focus {
     outline: none;
     border-color: #3498db;

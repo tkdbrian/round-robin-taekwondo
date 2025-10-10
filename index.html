@@ -11,17 +11,94 @@
     <!-- Cronómetro Flotante -->
     <div id="floating-timer" class="floating-timer" style="display: none;">
         <div class="timer-header">
-            <span class="timer-title">⏱️ Cronómetro</span>
+            <span class="timer-title">⏱️ Cronómetro & Penalizaciones</span>
             <button id="timer-minimize" class="timer-minimize">−</button>
         </div>
         <div class="timer-content">
             <div class="timer-display" id="timer-display">02:00</div>
+            
+            <!-- Controles del cronómetro -->
             <div class="timer-controls">
                 <button id="timer-start" class="timer-btn start-btn">▶️ Iniciar</button>
                 <button id="timer-pause" class="timer-btn pause-btn" style="display: none;">⏸️ Pausar</button>
                 <button id="timer-reset" class="timer-btn reset-btn">🔄 Reset</button>
                 <button id="timer-stop" class="timer-btn stop-btn">⏹️ Finalizar</button>
             </div>
+            
+            <!-- Sistema de Penalizaciones -->
+            <div class="penalties-section" id="penalties-section" style="display: none;">
+                <h4 style="margin: 5px 0; text-align: center; color: #2c3e50; font-size: 14px;">🚨 Penalizaciones</h4>
+                <p style="font-size: 10px; margin: 0 0 8px 0; text-align: center; color: #666;">
+                    <strong>3 advertencias = 1 punto en contra</strong>
+                </p>
+                
+                <div class="competitors-penalties-horizontal">
+                    <!-- Competidor Rojo -->
+                    <div class="competitor-penalties">
+                        <div class="competitor-header" style="background: #e74c3c; color: white;">
+                            <span id="red-competitor-name">Rojo</span>
+                        </div>
+                        <div class="penalty-controls-compact">
+                            <div class="penalty-row-compact">
+                                <span>Adv:</span>
+                                <div class="penalty-buttons-compact">
+                                    <button class="penalty-btn-small minus" onclick="adjustWarnings('red', -1)">-</button>
+                                    <span id="red-warnings" class="penalty-count-small">0</span>
+                                    <button class="penalty-btn-small plus" onclick="adjustWarnings('red', 1)">+</button>
+                                </div>
+                            </div>
+                            <div class="penalty-row-compact">
+                                <span>Pts:</span>
+                                <div class="penalty-buttons-compact">
+                                    <button class="penalty-btn-small minus" onclick="adjustPenalties('red', -1)">-</button>
+                                    <span id="red-penalties" class="penalty-count-small">0</span>
+                                    <button class="penalty-btn-small plus" onclick="adjustPenalties('red', 1)">+</button>
+                                </div>
+                            </div>
+                            <div class="penalty-total-compact">
+                                <span><strong>TOT:</strong></span>
+                                <span id="red-total" class="total-count-small">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Competidor Azul -->
+                    <div class="competitor-penalties">
+                        <div class="competitor-header" style="background: #3498db; color: white;">
+                            <span id="blue-competitor-name">Azul</span>
+                        </div>
+                        <div class="penalty-controls-compact">
+                            <div class="penalty-row-compact">
+                                <span>Adv:</span>
+                                <div class="penalty-buttons-compact">
+                                    <button class="penalty-btn-small minus" onclick="adjustWarnings('blue', -1)">-</button>
+                                    <span id="blue-warnings" class="penalty-count-small">0</span>
+                                    <button class="penalty-btn-small plus" onclick="adjustWarnings('blue', 1)">+</button>
+                                </div>
+                            </div>
+                            <div class="penalty-row-compact">
+                                <span>Pts:</span>
+                                <div class="penalty-buttons-compact">
+                                    <button class="penalty-btn-small minus" onclick="adjustPenalties('blue', -1)">-</button>
+                                    <span id="blue-penalties" class="penalty-count-small">0</span>
+                                    <button class="penalty-btn-small plus" onclick="adjustPenalties('blue', 1)">+</button>
+                                </div>
+                            </div>
+                            <div class="penalty-total-compact">
+                                <span><strong>TOT:</strong></span>
+                                <span id="blue-total" class="total-count-small">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Botón de reset penalizaciones -->
+                <button id="reset-penalties" class="timer-btn" style="width: 100%; margin-top: 10px; background: #95a5a6;" onclick="confirmResetPenalties()">
+                    🗑️ Limpiar Penalizaciones
+                </button>
+            </div>
+            
+            <!-- Configuración del tiempo -->
             <div class="timer-settings">
                 <label for="timer-minutes">Tiempo:</label>
                 <select id="timer-minutes">

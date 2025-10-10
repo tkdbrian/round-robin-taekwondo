@@ -465,8 +465,10 @@ class RoundRobinTournament {
                 // Encontrar todos los que están empatados con el actual
                 for (let j = i + 1; j < sortedCompetitors.length; j++) {
                     const nextCompetitor = sortedCompetitors[j];
+                    // SOLO crear desempate si están empatados en TODOS los criterios de ranking
                     if (currentCompetitor.victoryPoints === nextCompetitor.victoryPoints && 
-                        currentCompetitor.judgePoints === nextCompetitor.judgePoints) {
+                        currentCompetitor.judgePoints === nextCompetitor.judgePoints &&
+                        (currentCompetitor.tiebreakerWins || 0) === (nextCompetitor.tiebreakerWins || 0)) {
                         tiedGroup.push(nextCompetitor);
                     } else {
                         break; // Ya no hay más empatados en este grupo
@@ -482,12 +484,29 @@ class RoundRobinTournament {
                         return true;
                     }
                     
-                    // CASO NORMAL: Solo 2 empatados - crear pelea de desempate
+                    // CASO NORMAL: Solo 2 empatados - verificar si ya hay desempate resuelto
                     if (tiedGroup.length === 2) {
                         const fighter1 = tiedGroup[0];
                         const fighter2 = tiedGroup[1];
                         
-                        // Crear nueva pelea de desempate
+                        // Verificar si ya existe un desempate resuelto entre estos competidores
+                        const existingTiebreaker = this.fights.find(fight => 
+                            fight.isTiebreaker && 
+                            fight.completed &&
+                            ((fight.fighter1Index === this.competitors.indexOf(fighter1) && 
+                              fight.fighter2Index === this.competitors.indexOf(fighter2)) ||
+                             (fight.fighter1Index === this.competitors.indexOf(fighter2) && 
+                              fight.fighter2Index === this.competitors.indexOf(fighter1)))
+                        );
+                        
+                        if (existingTiebreaker) {
+                            // Ya hay un desempate resuelto entre estos competidores
+                            // NO crear otro desempate, saltar este grupo
+                            i += tiedGroup.length - 1;
+                            continue;
+                        }
+                        
+                        // No hay desempate previo, crear nueva pelea de desempate
                         this.createTiebreakerFight(fighter1, fighter2);
                         return true;
                     }
@@ -555,6 +574,13 @@ class RoundRobinTournament {
         const fighter1Index = this.competitors.findIndex(c => c.id === fighter1.id);
         const fighter2Index = this.competitors.findIndex(c => c.id === fighter2.id);
 
+        // Contar cuántos desempates ya han tenido estos competidores (solo para información)
+        const tiebreakerCount = this.fights.filter(f => 
+            f.isTiebreaker && 
+            ((f.fighter1Index === fighter1Index && f.fighter2Index === fighter2Index) ||
+             (f.fighter1Index === fighter2Index && f.fighter2Index === fighter1Index))
+        ).length;
+
         // Crear combate de desempate
         const tiebreakerFight = {
             fighter1Index: fighter1Index,
@@ -567,7 +593,8 @@ class RoundRobinTournament {
                 judge3: null,
                 judge4: null
             },
-            isTiebreaker: true // Marcar como combate de desempate
+            isTiebreaker: true, // Marcar como combate de desempate
+            tiebreakerNumber: tiebreakerCount + 1 // Número de desempate
         };
 
         // Agregar el combate de desempate
@@ -579,7 +606,8 @@ class RoundRobinTournament {
         this.saveToLocalStorage();
         
         // Mostrar mensaje de desempate
-        alert(`🥊 COMBATE DE DESEMPATE\n\n${fighter1.name} vs ${fighter2.name}\n\nAmbos competidores están empatados en:\n• Puntos: ${fighter1.victoryPoints}\n• Jueces: ${fighter1.judgePoints}\n\n¡Se realizará un combate final para determinar el ganador de la llave!`);
+        const tiebreakerMsg = tiebreakerCount === 0 ? 'COMBATE DE DESEMPATE' : `DESEMPATE #${tiebreakerCount + 1}`;
+        alert(`🥊 ${tiebreakerMsg}\n\n${fighter1.name} vs ${fighter2.name}\n\nAmbos competidores están empatados en:\n• Puntos: ${fighter1.victoryPoints}\n• Jueces: ${fighter1.judgePoints}\n\n¡Se realizará un combate${tiebreakerCount > 0 ? ' adicional' : ''} para determinar el ganador de la llave!`);
         
         // Cargar el combate de desempate
         this.loadCurrentFight();
@@ -587,20 +615,39 @@ class RoundRobinTournament {
 
     handleTiebreakerResult(currentFight, fighter1, fighter2, votes, decisions) {
         // En combate de desempate, NO se actualizan peleas/victorias/empates normales
-        // Solo se determina el ganador por jueces
+        // Solo se determina el ganador por jueces usando la MISMA LÓGICA que combates normales
         
-        if (votes.fighter1 > votes.fighter2) {
-            // Fighter 1 gana el desempate
+        // Determinar resultado - SIEMPRE GANA MAYORÍA DE VOTOS
+        if (votes.tie > votes.fighter1 && votes.tie > votes.fighter2) {
+            // EMPATE tiene mayoría de votos
+            currentFight.result = 'EMPATE - Se requiere nuevo desempate';
+        } else if (votes.fighter1 > votes.fighter2 && votes.fighter1 > votes.tie) {
+            // Fighter 1 tiene mayoría de votos
             currentFight.result = `${fighter1.name} ganó DESEMPATE`;
             fighter1.tiebreakerWins = (fighter1.tiebreakerWins || 0) + 1;
-        } else if (votes.fighter2 > votes.fighter1) {
-            // Fighter 2 gana el desempate  
+        } else if (votes.fighter2 > votes.fighter1 && votes.fighter2 > votes.tie) {
+            // Fighter 2 tiene mayoría de votos
+            currentFight.result = `${fighter2.name} ganó DESEMPATE`;
+            fighter2.tiebreakerWins = (fighter2.tiebreakerWins || 0) + 1;
+        } else if (votes.fighter1 === votes.fighter2 && votes.fighter1 > votes.tie) {
+            // Fighter1 y Fighter2 empatan en votos pero ambos superan a empate - gana fighter1 por criterio
+            currentFight.result = `${fighter1.name} ganó DESEMPATE`;
+            fighter1.tiebreakerWins = (fighter1.tiebreakerWins || 0) + 1;
+        } else if (votes.fighter1 === votes.tie && votes.fighter1 > votes.fighter2) {
+            // Fighter1 y empate empatan en votos pero ambos superan a fighter2 - gana fighter1 por criterio
+            currentFight.result = `${fighter1.name} ganó DESEMPATE`;
+            fighter1.tiebreakerWins = (fighter1.tiebreakerWins || 0) + 1;
+        } else if (votes.fighter2 === votes.tie && votes.fighter2 > votes.fighter1) {
+            // Fighter2 y empate empatan en votos pero ambos superan a fighter1 - gana fighter2 por criterio
             currentFight.result = `${fighter2.name} ganó DESEMPATE`;
             fighter2.tiebreakerWins = (fighter2.tiebreakerWins || 0) + 1;
         } else {
-            // EMPATE EN DESEMPATE - ¡Otro combate de desempate!
+            // Empate total (todos tienen mismos votos) o cualquier otro caso no contemplado
             currentFight.result = 'EMPATE - Se requiere nuevo desempate';
-            
+        }
+        
+        // Si hay empate, crear otro desempate
+        if (currentFight.result.includes('EMPATE')) {
             // Marcar como completada pero crear otro desempate
             currentFight.completed = true;
             currentFight.completedAt = new Date();
@@ -613,13 +660,14 @@ class RoundRobinTournament {
             this.updateScheduleDisplay();
             this.saveToLocalStorage();
             
-            alert(`⚡ NUEVO EMPATE\n\n${fighter1.name} y ${fighter2.name} volvieron a empatar en el desempate.\n\n¡Se realizará un nuevo combate de desempate!`);
+            alert(`⚡ NUEVO EMPATE\n\n${fighter1.name} y ${fighter2.name} volvieron a empatar en el desempate.\n\nVotos: ${fighter1.name}: ${votes.fighter1}, ${fighter2.name}: ${votes.fighter2}, Empates: ${votes.tie}\n\n¡Se realizará un nuevo combate de desempate!`);
             
             // Crear otro combate de desempate
             this.createTiebreakerFight(fighter1, fighter2);
             return;
         }
         
+        // Si hay ganador definido, finalizar
         // Marcar pelea como completada
         currentFight.completed = true;
         currentFight.completedAt = new Date();
@@ -633,8 +681,8 @@ class RoundRobinTournament {
         this.saveToLocalStorage();
         
         // Mostrar mensaje de ganador del desempate
-        const winner = votes.fighter1 > votes.fighter2 ? fighter1.name : fighter2.name;
-        alert(`🏆 ¡DESEMPATE RESUELTO!\n\nGanador: ${winner}\n\nLa categoría ha terminado.`);
+        const winner = currentFight.result.includes(fighter1.name) ? fighter1.name : fighter2.name;
+        alert(`🏆 ¡DESEMPATE RESUELTO!\n\nGanador: ${winner}\n\nVotos: ${fighter1.name}: ${votes.fighter1}, ${fighter2.name}: ${votes.fighter2}, Empates: ${votes.tie}\n\nLa categoría ha terminado.`);
         
         this.loadCurrentFight();
     }
@@ -692,6 +740,9 @@ class RoundRobinTournament {
         // Actualizar header
         document.getElementById('fight-display').textContent = fightInfo;
         document.getElementById('competitors-display').textContent = `${fighter1.name} vs ${fighter2.name}`;
+
+        // Actualizar nombres en el sistema de penalizaciones
+        this.updateCompetitorNames(fighter1.name, fighter2.name);
 
         // Reset de decisiones de jueces
         this.resetJudgeDecisions();
@@ -760,7 +811,7 @@ class RoundRobinTournament {
         // VERIFICAR SI ES PELEA FINAL - NO PUEDE HABER EMPATES
         const isFinale = this.isFinalFight(currentFight);
         
-        // Determinar resultado - MAYORÍA DE VOTOS gana
+        // Determinar resultado - SIEMPRE GANA MAYORÍA DE VOTOS
         if (votes.tie > votes.fighter1 && votes.tie > votes.fighter2) {
             // EMPATE tiene mayoría de votos
             if (isFinale) {
@@ -775,29 +826,34 @@ class RoundRobinTournament {
                 judgePoints = `${fighter1.name}: +${votes.fighter1} pts, ${fighter2.name}: +${votes.fighter2} pts`;
             }
         } else if (votes.fighter1 > votes.fighter2 && votes.fighter1 > votes.tie) {
-            // Fighter 1 tiene mayoría absoluta
+            // Fighter 1 tiene mayoría de votos
             winner = `${fighter1.name} (Ganador)`;
             victoryPoints = `${fighter1.name}: 3 pts, ${fighter2.name}: 0 pts`;
             judgePoints = `${fighter1.name}: +${votes.fighter1} pts, ${fighter2.name}: +${votes.fighter2} pts`;
         } else if (votes.fighter2 > votes.fighter1 && votes.fighter2 > votes.tie) {
-            // Fighter 2 tiene mayoría absoluta
+            // Fighter 2 tiene mayoría de votos
             winner = `${fighter2.name} (Ganador)`;
             victoryPoints = `${fighter2.name}: 3 pts, ${fighter1.name}: 0 pts`;
             judgePoints = `${fighter2.name}: +${votes.fighter2} pts, ${fighter1.name}: +${votes.fighter1} pts`;
-        } else if (votes.fighter1 > votes.fighter2) {
-            // Fighter 1 tiene más votos que fighter 2 (pero empate también puede tener votos)
+        } else if (votes.fighter1 === votes.fighter2 && votes.fighter1 > votes.tie) {
+            // Fighter1 y Fighter2 empatan en votos pero ambos superan a empate - gana fighter1 por criterio
             winner = `${fighter1.name} (Ganador)`;
             victoryPoints = `${fighter1.name}: 3 pts, ${fighter2.name}: 0 pts`;
             judgePoints = `${fighter1.name}: +${votes.fighter1} pts, ${fighter2.name}: +${votes.fighter2} pts`;
-        } else if (votes.fighter2 > votes.fighter1) {
-            // Fighter 2 tiene más votos que fighter 1 (pero empate también puede tener votos)
+        } else if (votes.fighter1 === votes.tie && votes.fighter1 > votes.fighter2) {
+            // Fighter1 y empate empatan en votos pero ambos superan a fighter2 - gana fighter1 por criterio
+            winner = `${fighter1.name} (Ganador)`;
+            victoryPoints = `${fighter1.name}: 3 pts, ${fighter2.name}: 0 pts`;
+            judgePoints = `${fighter1.name}: +${votes.fighter1} pts, ${fighter2.name}: +${votes.fighter2} pts`;
+        } else if (votes.fighter2 === votes.tie && votes.fighter2 > votes.fighter1) {
+            // Fighter2 y empate empatan en votos pero ambos superan a fighter1 - gana fighter2 por criterio
             winner = `${fighter2.name} (Ganador)`;
             victoryPoints = `${fighter2.name}: 3 pts, ${fighter1.name}: 0 pts`;
             judgePoints = `${fighter2.name}: +${votes.fighter2} pts, ${fighter1.name}: +${votes.fighter1} pts`;
         } else {
-            // Empate real (fighter1 y fighter2 tienen mismo número de votos)
+            // Empate total (todos tienen mismos votos) o cualquier otro caso no contemplado
             if (isFinale) {
-                // En pelea final pero empate real - PERMITIR confirmar y crear nueva pelea
+                // Es pelea final pero empate total - PERMITIR pero crear nueva pelea
                 winner = '⚡ EMPATE - Nueva pelea requerida';
                 victoryPoints = 'Los competidores deberán pelear nuevamente';
                 judgePoints = `Votos: ${fighter1.name}: ${votes.fighter1}, ${fighter2.name}: ${votes.fighter2}, Empates: ${votes.tie}`;
@@ -863,7 +919,7 @@ class RoundRobinTournament {
         fighter1.fights++;
         fighter2.fights++;
 
-        // Asignar puntos de victoria/empate - MAYORÍA DE VOTOS gana
+        // Asignar puntos de victoria/empate - SIEMPRE GANA MAYORÍA DE VOTOS
         if (votes.tie > votes.fighter1 && votes.tie > votes.fighter2) {
             // EMPATE tiene mayoría de votos
             fighter1.ties++;
@@ -872,31 +928,37 @@ class RoundRobinTournament {
             fighter2.victoryPoints += 1;
             currentFight.result = 'Empate';
         } else if (votes.fighter1 > votes.fighter2 && votes.fighter1 > votes.tie) {
-            // Fighter 1 tiene mayoría absoluta
+            // Fighter 1 tiene mayoría de votos
             fighter1.wins++;
             fighter1.victoryPoints += 3;
             fighter2.losses++;
             currentFight.result = `${fighter1.name} ganó`;
         } else if (votes.fighter2 > votes.fighter1 && votes.fighter2 > votes.tie) {
-            // Fighter 2 tiene mayoría absoluta
+            // Fighter 2 tiene mayoría de votos
             fighter2.wins++;
             fighter2.victoryPoints += 3;
             fighter1.losses++;
             currentFight.result = `${fighter2.name} ganó`;
-        } else if (votes.fighter1 > votes.fighter2) {
-            // Fighter 1 tiene más votos que fighter 2 (pero empate también puede tener votos)
+        } else if (votes.fighter1 === votes.fighter2 && votes.fighter1 > votes.tie) {
+            // Fighter1 y Fighter2 empatan en votos pero ambos superan a empate - gana fighter1 por criterio
             fighter1.wins++;
             fighter1.victoryPoints += 3;
             fighter2.losses++;
             currentFight.result = `${fighter1.name} ganó`;
-        } else if (votes.fighter2 > votes.fighter1) {
-            // Fighter 2 tiene más votos que fighter 1 (pero empate también puede tener votos)
+        } else if (votes.fighter1 === votes.tie && votes.fighter1 > votes.fighter2) {
+            // Fighter1 y empate empatan en votos pero ambos superan a fighter2 - gana fighter1 por criterio
+            fighter1.wins++;
+            fighter1.victoryPoints += 3;
+            fighter2.losses++;
+            currentFight.result = `${fighter1.name} ganó`;
+        } else if (votes.fighter2 === votes.tie && votes.fighter2 > votes.fighter1) {
+            // Fighter2 y empate empatan en votos pero ambos superan a fighter1 - gana fighter2 por criterio
             fighter2.wins++;
             fighter2.victoryPoints += 3;
             fighter1.losses++;
             currentFight.result = `${fighter2.name} ganó`;
         } else {
-            // Empate real (fighter1 y fighter2 tienen mismo número de votos)
+            // Empate total (todos tienen mismos votos) o cualquier otro caso no contemplado
             fighter1.ties++;
             fighter2.ties++;
             fighter1.victoryPoints += 1;
@@ -1004,6 +1066,9 @@ class RoundRobinTournament {
         for (let i = 1; i <= 4; i++) {
             document.getElementById(`judge${i}-selection`).textContent = 'Sin decisión';
         }
+        
+        // Reset de penalizaciones
+        this.resetPenalties();
     }
 
     initializeStandings() {
@@ -2250,6 +2315,10 @@ class RoundRobinTournament {
     initializeTimer() {
         this.updateTimerDisplay();
         this.showTimer();
+        this.initializePenalties();
+        
+        // Mostrar sección de penalizaciones cuando se inicia el timer
+        document.getElementById('penalties-section').style.display = 'block';
     }
     
     showTimer() {
@@ -2485,6 +2554,75 @@ class RoundRobinTournament {
             isDragging = false;
             header.style.cursor = 'move';
         });
+    }
+
+    // ========== SISTEMA DE PENALIZACIONES ==========
+    
+    initializePenalties() {
+        this.penalties = {
+            red: { warnings: 0, penalties: 0 },
+            blue: { warnings: 0, penalties: 0 }
+        };
+        this.updatePenaltiesDisplay();
+    }
+
+    updateCompetitorNames(fighter1Name, fighter2Name) {
+        document.getElementById('blue-competitor-name').textContent = fighter1Name;
+        document.getElementById('red-competitor-name').textContent = fighter2Name;
+    }
+
+    updatePenaltiesDisplay() {
+        // Actualizar display de advertencias y penalizaciones
+        document.getElementById('red-warnings').textContent = this.penalties.red.warnings;
+        document.getElementById('red-penalties').textContent = this.penalties.red.penalties;
+        document.getElementById('blue-warnings').textContent = this.penalties.blue.warnings;
+        document.getElementById('blue-penalties').textContent = this.penalties.blue.penalties;
+        
+        // Calcular total de puntos en contra (cada 3 advertencias = 1 punto)
+        const redTotal = Math.floor(this.penalties.red.warnings / 3) + this.penalties.red.penalties;
+        const blueTotal = Math.floor(this.penalties.blue.warnings / 3) + this.penalties.blue.penalties;
+        
+        // Actualizar display de totales
+        document.getElementById('red-total').textContent = redTotal;
+        document.getElementById('blue-total').textContent = blueTotal;
+    }
+
+    resetPenalties() {
+        this.penalties = {
+            red: { warnings: 0, penalties: 0 },
+            blue: { warnings: 0, penalties: 0 }
+        };
+        this.updatePenaltiesDisplay();
+    }
+
+    getPenaltiesForResult() {
+        return {
+            red: `${this.penalties.red.warnings} adv, ${this.penalties.red.penalties} pts-`,
+            blue: `${this.penalties.blue.warnings} adv, ${this.penalties.blue.penalties} pts-`
+        };
+    }
+}
+
+// Funciones globales para los botones de penalizaciones
+function adjustWarnings(color, delta) {
+    if (tournament && tournament.penalties) {
+        tournament.penalties[color].warnings = Math.max(0, tournament.penalties[color].warnings + delta);
+        tournament.updatePenaltiesDisplay();
+    }
+}
+
+function adjustPenalties(color, delta) {
+    if (tournament && tournament.penalties) {
+        tournament.penalties[color].penalties = Math.max(0, tournament.penalties[color].penalties + delta);
+        tournament.updatePenaltiesDisplay();
+    }
+}
+
+function confirmResetPenalties() {
+    if (confirm('¿Estás seguro de que quieres limpiar todas las penalizaciones y advertencias?')) {
+        if (tournament && tournament.resetPenalties) {
+            tournament.resetPenalties();
+        }
     }
 }
 
