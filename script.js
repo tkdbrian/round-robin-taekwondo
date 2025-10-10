@@ -468,35 +468,47 @@ class RoundRobinTournament {
             return b.judgePoints - a.judgePoints;
         });
 
-        // Encontrar todos los competidores empatados en primer lugar
+        // Encontrar empates en cualquier posición (no solo primer lugar)
         if (sortedCompetitors.length >= 2) {
-            const firstPlaceVictoryPoints = sortedCompetitors[0].victoryPoints;
-            const firstPlaceJudgePoints = sortedCompetitors[0].judgePoints;
-            
-            const tiedCompetitors = sortedCompetitors.filter(competitor => 
-                competitor.victoryPoints === firstPlaceVictoryPoints && 
-                competitor.judgePoints === firstPlaceJudgePoints
-            );
-            
-            if (tiedCompetitors.length >= 2) {
+            // Buscar grupos de competidores empatados
+            for (let i = 0; i < sortedCompetitors.length - 1; i++) {
+                const currentCompetitor = sortedCompetitors[i];
+                const tiedGroup = [currentCompetitor];
                 
-                // CASO ESPECIAL: Si TODOS los competidores están empatados, reiniciar torneo
-                if (tiedCompetitors.length === this.competitors.length) {
-                    this.restartEntireTournament();
-                    return true;
+                // Encontrar todos los que están empatados con el actual
+                for (let j = i + 1; j < sortedCompetitors.length; j++) {
+                    const nextCompetitor = sortedCompetitors[j];
+                    if (currentCompetitor.victoryPoints === nextCompetitor.victoryPoints && 
+                        currentCompetitor.judgePoints === nextCompetitor.judgePoints) {
+                        tiedGroup.push(nextCompetitor);
+                    } else {
+                        break; // Ya no hay más empatados en este grupo
+                    }
                 }
                 
-                // CASO NORMAL: Solo 2 empatados - crear pelea de desempate
-                if (tiedCompetitors.length === 2) {
-                    const fighter1 = tiedCompetitors[0];
-                    const fighter2 = tiedCompetitors[1];
+                // Si encontramos un grupo empatado, procesarlo
+                if (tiedGroup.length >= 2) {
                     
-                    // Crear nueva pelea de desempate
-                    this.createTiebreakerFight(fighter1, fighter2);
-                    return true;
+                    // CASO ESPECIAL: Si TODOS los competidores están empatados, reiniciar torneo
+                    if (tiedGroup.length === this.competitors.length) {
+                        this.restartEntireTournament();
+                        return true;
+                    }
+                    
+                    // CASO NORMAL: Solo 2 empatados - crear pelea de desempate
+                    if (tiedGroup.length === 2) {
+                        const fighter1 = tiedGroup[0];
+                        const fighter2 = tiedGroup[1];
+                        
+                        // Crear nueva pelea de desempate
+                        this.createTiebreakerFight(fighter1, fighter2);
+                        return true;
+                    }
+                    
+                    // Si hay 3+ empatados en una posición, quedan empatados técnicamente
+                    // Saltar este grupo para continuar buscando otros empates
+                    i += tiedGroup.length - 1;
                 }
-                
-                // Si hay 3+ empatados (pero no todos), NO hacer nada - quedan empatados
             }
         }
 
@@ -1049,10 +1061,53 @@ class RoundRobinTournament {
             return a.name.localeCompare(b.name);
         });
 
+        // Detectar empates técnicos para mostrar posiciones correctas
+        let currentPosition = 1;
+        let displayPosition = 1;
+        
         sortedCompetitors.forEach((competitor, index) => {
+            // Verificar si está empatado con el anterior
+            let isNewGroup = false;
+            if (index === 0) {
+                isNewGroup = true;
+            } else {
+                const prev = sortedCompetitors[index - 1];
+                if (competitor.victoryPoints !== prev.victoryPoints || 
+                    competitor.judgePoints !== prev.judgePoints) {
+                    isNewGroup = true;
+                    currentPosition = index + 1;
+                }
+            }
+            
+            if (isNewGroup) {
+                displayPosition = currentPosition;
+            }
+            
+            // Verificar cuántos están empatados en este grupo
+            let tiedCount = 1;
+            for (let j = index + 1; j < sortedCompetitors.length; j++) {
+                const next = sortedCompetitors[j];
+                if (competitor.victoryPoints === next.victoryPoints && 
+                    competitor.judgePoints === next.judgePoints) {
+                    tiedCount++;
+                } else {
+                    break;
+                }
+            }
+            
+            // Determinar cómo mostrar la posición
+            let positionText;
+            if (tiedCount > 1) {
+                // Empate técnico
+                const endPosition = displayPosition + tiedCount - 1;
+                positionText = `${displayPosition}°-${endPosition}° (Empate)`;
+            } else {
+                positionText = `${displayPosition}°`;
+            }
+
             const row = tbody.insertRow();
             row.innerHTML = `
-                <td>${index + 1}</td>
+                <td><strong style="color: ${tiedCount > 1 ? '#f39c12' : '#2c3e50'};">${positionText}</strong></td>
                 <td>${competitor.name}</td>
                 <td>${competitor.fights}</td>
                 <td>${competitor.wins}</td>
@@ -1594,7 +1649,7 @@ class RoundRobinTournament {
     </div>
 
     <div class="podium">
-        ${sortedCompetitors.slice(0, 3).map((competitor, index) => `
+        ${sortedCompetitors.slice(0, this.currentPhase === 'roundrobin' ? 2 : 3).map((competitor, index) => `
             <div class="podium-place place-${index + 1}">
                 <div class="place-number">${index + 1}°</div>
                 <div class="competitor-name">${competitor.name}</div>
@@ -1603,6 +1658,11 @@ class RoundRobinTournament {
             </div>
         `).join('')}
     </div>
+
+    ${this.currentPhase === 'roundrobin' ? 
+        '<div style="text-align: center; margin: 15px 0; color: #7f8c8d; font-style: italic;">* Sistema Round Robin: Solo se otorgan 1° y 2° puesto oficial</div>' : 
+        ''
+    }
 
     <div class="table-container">
         <h3>📊 Clasificación Final</h3>
