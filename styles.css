@@ -1231,7 +1231,7 @@ header h1 i {
     -webkit-backdrop-filter: blur(10px); /* Safari */
     -moz-backdrop-filter: blur(10px); /* Firefox */
     z-index: 1000;
-    min-width: 350px; /* Aumentado de 280px */
+    min-width: 350px; /* Solo para desktop */
     border: 2px solid #3498db;
     overflow: hidden;
     transition: all 0.3s ease;
@@ -1403,16 +1403,18 @@ header h1 i {
     border-color: #3498db;
 }
 
-/* Responsive para el cronómetro */
-@media (max-width: 768px) {
+/* Responsive para el cronómetro - FORZAR MÓVIL */
+@media screen and (max-width: 768px) {
     .floating-timer {
-        top: 10px;
-        right: 10px;
+        top: 10px !important;
+        right: 10px !important;
+        bottom: auto !important;
         left: auto !important;
         position: fixed !important;
         min-width: 150px !important;
         max-width: 180px !important;
-        width: auto !important;
+        width: 150px !important;
+        border-radius: 10px !important;
     }
     
     .timer-content {
@@ -1423,6 +1425,7 @@ header h1 i {
         font-size: 1.2rem !important;
         padding: 5px !important;
         margin-bottom: 5px !important;
+        border-radius: 8px !important;
     }
     
     .timer-controls {
@@ -1435,6 +1438,7 @@ header h1 i {
         font-size: 0.6rem !important;
         padding: 3px 2px !important;
         min-width: auto !important;
+        width: 100% !important;
     }
     
     .timer-settings {
@@ -1444,16 +1448,25 @@ header h1 i {
     .timer-settings select {
         font-size: 0.6rem !important;
         padding: 2px !important;
+        width: 100% !important;
+    }
+    
+    .timer-header {
+        padding: 3px 5px !important;
+        font-size: 0.8rem !important;
     }
 }
 
-@media (max-width: 480px) {
+@media screen and (max-width: 480px) {
     .floating-timer {
-        top: 5px;
-        right: 5px;
+        top: 5px !important;
+        right: 5px !important;
+        bottom: auto !important;
         left: auto !important;
         min-width: 120px !important;
         max-width: 150px !important;
+        width: 120px !important;
+        border-radius: 8px !important;
     }
     
     .timer-content {
@@ -1464,6 +1477,7 @@ header h1 i {
         font-size: 1rem !important;
         padding: 3px !important;
         margin-bottom: 3px !important;
+        border-radius: 6px !important;
     }
     
     .timer-controls {
@@ -1477,13 +1491,14 @@ header h1 i {
     }
     
     .timer-header {
-        padding: 3px 5px !important;
+        padding: 2px 3px !important;
+        font-size: 0.7rem !important;
     }
     
     .timer-minimize {
         width: 15px !important;
         height: 15px !important;
-        font-size: 1rem !important;
+        font-size: 0.8rem !important;
     }
     
     .timer-settings select {
