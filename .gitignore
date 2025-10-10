@@ -1,0 +1,17 @@
+# Archivos de build de Electron
+dist/
+node_modules/
+*.log
+
+# Archivos comprimidos grandes
+*.rar
+*.zip
+*.exe
+
+# Archivos temporales
+*.tmp
+*.temp
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db

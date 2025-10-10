@@ -99,30 +99,6 @@ class RoundRobinTournament {
             <i class="fas fa-play"></i>
             ${buttonText}
         `;
-        
-        // Actualizar el contador de peleas en el header
-        this.updateFightCountDisplay(count);
-    }
-
-    updateFightCountDisplay(count) {
-        let totalFights;
-        if (count <= 5) {
-            // Round Robin: n*(n-1)/2 peleas
-            totalFights = (count * (count - 1)) / 2;
-        } else if (count == 6) {
-            // 2 llaves de 3: (3*2/2)*2 + 1 final = 6 + 1 = 7
-            totalFights = 7;
-        } else if (count == 7) {
-            // 1 llave de 4 + 1 llave de 3: (4*3/2) + (3*2/2) + 1 final = 6 + 3 + 1 = 10
-            totalFights = 10;
-        } else if (count == 8) {
-            // 2 llaves de 4: (4*3/2)*2 + 1 final = 12 + 1 = 13
-            totalFights = 13;
-        }
-        
-        // Actualizar ambos displays
-        document.getElementById('fight-display').textContent = `Pelea 1 de ${totalFights}`;
-        document.getElementById('current-fight-info').textContent = `Pelea 1 de ${totalFights}`;
     }
 
     startTournament() {
@@ -207,16 +183,6 @@ class RoundRobinTournament {
         this.loadCurrentFight();
         this.updateStandings();
         this.updateScheduleDisplay();
-        
-        // Actualizar contador de peleas con la cantidad real
-        this.updateRealFightCount();
-    }
-
-    updateRealFightCount() {
-        // Actualizar con el número real de peleas generadas
-        const totalFights = this.fights.length;
-        document.getElementById('fight-display').textContent = `Pelea 1 de ${totalFights}`;
-        document.getElementById('current-fight-info').textContent = `Pelea 1 de ${totalFights}`;
     }
 
     generateFightSchedule() {

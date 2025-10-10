@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Taekwon-Do Round Robin</title>
+    <style>
+        body { 
+            margin: 0; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .launcher {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 500px;
+        }
+        .logo { font-size: 3rem; margin-bottom: 20px; }
+        h1 { color: #333; margin-bottom: 10px; }
+        .version { color: #666; margin-bottom: 30px; }
+        .start-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .start-btn:hover { transform: translateY(-2px); }
+        .info { margin-top: 20px; color: #666; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <div class="launcher">
+        <div class="logo">🥋</div>
+        <h1>Sistema Taekwon-Do</h1>
+        <p class="version">Round Robin & Brackets - v1.0</p>
+        <button class="start-btn" onclick="window.location.href='index.html'">
+            ▶️ Iniciar Sistema
+        </button>
+        <div class="info">
+            <p>✅ Sistema offline - No requiere internet</p>
+            <p>💾 Auto-guardado automático</p>
+            <p>📊 Exportación a HTML/CSV</p>
+        </div>
+    </div>
+</body>
+</html>
