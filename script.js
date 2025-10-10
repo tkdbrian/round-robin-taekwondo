@@ -502,10 +502,12 @@ class RoundRobinTournament {
                         const fighter1 = tiedGroup[0];
                         const fighter2 = tiedGroup[1];
                         
-                        // Verificar si ya existe un desempate resuelto entre estos competidores
+                        // Verificar si ya existe un desempate resuelto con GANADOR entre estos competidores
                         const existingTiebreaker = this.fights.find(fight => 
                             fight.isTiebreaker && 
                             fight.completed &&
+                            fight.result && 
+                            fight.result.includes('ganó DESEMPATE') && // Debe tener un ganador claro
                             ((fight.fighter1Index === this.competitors.indexOf(fighter1) && 
                               fight.fighter2Index === this.competitors.indexOf(fighter2)) ||
                              (fight.fighter1Index === this.competitors.indexOf(fighter2) && 
@@ -513,7 +515,10 @@ class RoundRobinTournament {
                         );
                         
                         if (existingTiebreaker) {
-                            // Ya hay un desempate resuelto entre estos competidores
+                            // Ya hay un desempate resuelto con ganador entre estos competidores
+                            // Verificar quién ganó el desempate para desempatar correctamente
+                            const tiebreakerWinner = existingTiebreaker.result.includes(fighter1.name) ? fighter1 : fighter2;
+                            console.log(`✅ Desempate ya resuelto: ${tiebreakerWinner.name} ganó. No se crea nuevo desempate.`);
                             // NO crear otro desempate, saltar este grupo
                             i += tiedGroup.length - 1;
                             continue;
