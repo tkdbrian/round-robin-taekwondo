@@ -1814,7 +1814,14 @@ class RoundRobinTournament {
         // Reiniciar estadísticas solo de competidores en brackets
         this.competitors.forEach(competitor => {
             if (bracketCompetitorIds.includes(competitor.id)) {
-                // Solo reiniciar contadores de peleas de brackets, NO los puntos totales
+                // Para brackets, las estadísticas globales muestran solo peleas de brackets
+                competitor.fights = 0;
+                competitor.wins = 0;
+                competitor.ties = 0;
+                competitor.losses = 0;
+                competitor.victoryPoints = 0;
+                competitor.judgePoints = 0;
+                // También reiniciar contadores específicos de brackets
                 competitor.bracketFights = 0;
                 competitor.bracketWins = 0;
                 competitor.bracketTies = 0;
@@ -1830,6 +1837,11 @@ class RoundRobinTournament {
                 const fighter1 = this.competitors[fight.fighter1Index];
                 const fighter2 = this.competitors[fight.fighter2Index];
                 
+                // Actualizar contadores principales (para display)
+                fighter1.fights++;
+                fighter2.fights++;
+                
+                // También actualizar contadores específicos de brackets
                 fighter1.bracketFights++;
                 fighter2.bracketFights++;
 
@@ -1844,31 +1856,37 @@ class RoundRobinTournament {
                 // Determinar ganador y actualizar estadísticas
                 if (votes.fighter1 > votes.fighter2 && votes.fighter1 > votes.tie) {
                     // Fighter1 gana
+                    fighter1.wins++;
+                    fighter1.victoryPoints += 3;
                     fighter1.bracketWins++;
                     fighter1.bracketVictoryPoints += 3;
-                    fighter1.victoryPoints += 3; // También actualizar total
+                    fighter2.losses++;
                     fighter2.bracketLosses++;
                 } else if (votes.fighter2 > votes.fighter1 && votes.fighter2 > votes.tie) {
                     // Fighter2 gana
+                    fighter2.wins++;
+                    fighter2.victoryPoints += 3;
                     fighter2.bracketWins++;
                     fighter2.bracketVictoryPoints += 3;
-                    fighter2.victoryPoints += 3; // También actualizar total
+                    fighter1.losses++;
                     fighter1.bracketLosses++;
                 } else {
                     // Empate (mayoría de votos empate o empate en votos ganadores)
+                    fighter1.ties++;
+                    fighter2.ties++;
+                    fighter1.victoryPoints += 1;
+                    fighter2.victoryPoints += 1;
                     fighter1.bracketTies++;
                     fighter2.bracketTies++;
                     fighter1.bracketVictoryPoints += 1;
                     fighter2.bracketVictoryPoints += 1;
-                    fighter1.victoryPoints += 1; // También actualizar total
-                    fighter2.victoryPoints += 1; // También actualizar total
                 }
 
-                // Asignar puntos de jueces (solo en brackets)
+                // Asignar puntos de jueces
+                fighter1.judgePoints += votes.fighter1;
+                fighter2.judgePoints += votes.fighter2;
                 fighter1.bracketJudgePoints += votes.fighter1;
                 fighter2.bracketJudgePoints += votes.fighter2;
-                fighter1.judgePoints += votes.fighter1; // También actualizar total
-                fighter2.judgePoints += votes.fighter2; // También actualizar total
             }
         });
     }
