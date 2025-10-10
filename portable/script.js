@@ -466,9 +466,11 @@ class RoundRobinTournament {
                 for (let j = i + 1; j < sortedCompetitors.length; j++) {
                     const nextCompetitor = sortedCompetitors[j];
                     // SOLO crear desempate si están empatados en TODOS los criterios de ranking
-                    if (currentCompetitor.victoryPoints === nextCompetitor.victoryPoints && 
+                    // Usar los MISMOS criterios que sortCompetitorsByRanking
+                    if (currentCompetitor.wins === nextCompetitor.wins && 
                         currentCompetitor.judgePoints === nextCompetitor.judgePoints &&
-                        (currentCompetitor.tiebreakerWins || 0) === (nextCompetitor.tiebreakerWins || 0)) {
+                        (currentCompetitor.tiebreakerWins || 0) === (nextCompetitor.tiebreakerWins || 0) &&
+                        currentCompetitor.victoryPoints === nextCompetitor.victoryPoints) {
                         tiedGroup.push(nextCompetitor);
                     } else {
                         break; // Ya no hay más empatados en este grupo
