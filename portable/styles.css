@@ -1408,32 +1408,32 @@ header h1 i {
     .floating-timer {
         top: 10px;
         right: 10px;
-        left: 10px;
+        left: auto !important;
         position: fixed !important;
-        min-width: auto !important;
-        max-width: calc(100vw - 20px) !important;
+        min-width: 200px !important;
+        max-width: 250px !important;
         width: auto !important;
     }
     
     .timer-content {
-        padding: 15px !important;
+        padding: 10px !important;
     }
     
     .timer-display {
-        font-size: 2.5rem !important;
-        padding: 15px !important;
-        margin-bottom: 15px !important;
+        font-size: 1.8rem !important;
+        padding: 10px !important;
+        margin-bottom: 10px !important;
     }
     
     .timer-controls {
         flex-direction: row !important;
-        gap: 5px !important;
-        margin-bottom: 10px !important;
+        gap: 4px !important;
+        margin-bottom: 8px !important;
     }
     
     .timer-btn {
-        font-size: 0.8rem !important;
-        padding: 8px 6px !important;
+        font-size: 0.7rem !important;
+        padding: 6px 4px !important;
         min-width: auto !important;
     }
 }
@@ -1442,27 +1442,39 @@ header h1 i {
     .floating-timer {
         top: 5px;
         right: 5px;
-        left: 5px;
-        max-width: calc(100vw - 10px) !important;
+        left: auto !important;
+        min-width: 180px !important;
+        max-width: 200px !important;
     }
     
     .timer-content {
-        padding: 10px !important;
+        padding: 8px !important;
     }
     
     .timer-display {
-        font-size: 2rem !important;
-        padding: 10px !important;
-        margin-bottom: 10px !important;
+        font-size: 1.5rem !important;
+        padding: 8px !important;
+        margin-bottom: 8px !important;
     }
     
     .timer-controls {
-        gap: 3px !important;
+        gap: 2px !important;
+        margin-bottom: 5px !important;
     }
     
     .timer-btn {
-        font-size: 0.7rem !important;
-        padding: 6px 4px !important;
+        font-size: 0.6rem !important;
+        padding: 4px 3px !important;
+    }
+    
+    .timer-header {
+        padding: 5px 8px !important;
+    }
+    
+    .timer-minimize {
+        width: 20px !important;
+        height: 20px !important;
+        font-size: 1.2rem !important;
     }
 }
 
