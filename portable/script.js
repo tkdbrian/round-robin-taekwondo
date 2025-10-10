@@ -624,6 +624,9 @@ class RoundRobinTournament {
         // En combate de desempate, NO se actualizan peleas/victorias/empates normales
         // Solo se determina el ganador por jueces usando la MISMA LÓGICA que combates normales
         
+        let hasWinner = false;
+        let tiebreakerWinner = null;
+
         // Determinar resultado - SIEMPRE GANA MAYORÍA DE VOTOS
         if (votes.tie > votes.fighter1 && votes.tie > votes.fighter2) {
             // EMPATE tiene mayoría de votos
@@ -632,29 +635,39 @@ class RoundRobinTournament {
             // Fighter 1 tiene mayoría de votos
             currentFight.result = `${fighter1.name} ganó DESEMPATE`;
             fighter1.tiebreakerWins = (fighter1.tiebreakerWins || 0) + 1;
+            hasWinner = true;
+            tiebreakerWinner = fighter1;
         } else if (votes.fighter2 > votes.fighter1 && votes.fighter2 > votes.tie) {
             // Fighter 2 tiene mayoría de votos
             currentFight.result = `${fighter2.name} ganó DESEMPATE`;
             fighter2.tiebreakerWins = (fighter2.tiebreakerWins || 0) + 1;
+            hasWinner = true;
+            tiebreakerWinner = fighter2;
         } else if (votes.fighter1 === votes.fighter2 && votes.fighter1 > votes.tie) {
             // Fighter1 y Fighter2 empatan en votos pero ambos superan a empate - gana fighter1 por criterio
             currentFight.result = `${fighter1.name} ganó DESEMPATE`;
             fighter1.tiebreakerWins = (fighter1.tiebreakerWins || 0) + 1;
+            hasWinner = true;
+            tiebreakerWinner = fighter1;
         } else if (votes.fighter1 === votes.tie && votes.fighter1 > votes.fighter2) {
             // Fighter1 y empate empatan en votos pero ambos superan a fighter2 - gana fighter1 por criterio
             currentFight.result = `${fighter1.name} ganó DESEMPATE`;
             fighter1.tiebreakerWins = (fighter1.tiebreakerWins || 0) + 1;
+            hasWinner = true;
+            tiebreakerWinner = fighter1;
         } else if (votes.fighter2 === votes.tie && votes.fighter2 > votes.fighter1) {
             // Fighter2 y empate empatan en votos pero ambos superan a fighter1 - gana fighter2 por criterio
             currentFight.result = `${fighter2.name} ganó DESEMPATE`;
             fighter2.tiebreakerWins = (fighter2.tiebreakerWins || 0) + 1;
+            hasWinner = true;
+            tiebreakerWinner = fighter2;
         } else {
             // Empate total (todos tienen mismos votos) o cualquier otro caso no contemplado
             currentFight.result = 'EMPATE - Se requiere nuevo desempate';
         }
         
-        // Si hay empate, crear otro desempate
-        if (currentFight.result.includes('EMPATE')) {
+        // Si no hay ganador, crear otro desempate
+        if (!hasWinner) {
             // Marcar como completada pero crear otro desempate
             currentFight.completed = true;
             currentFight.completedAt = new Date();
@@ -688,8 +701,8 @@ class RoundRobinTournament {
         this.saveToLocalStorage();
         
         // Mostrar mensaje de ganador del desempate
-        const winner = currentFight.result.includes(fighter1.name) ? fighter1.name : fighter2.name;
-        alert(`🏆 ¡DESEMPATE RESUELTO!\n\nGanador: ${winner}\n\nVotos: ${fighter1.name}: ${votes.fighter1}, ${fighter2.name}: ${votes.fighter2}, Empates: ${votes.tie}\n\nLa categoría ha terminado.`);
+    const winner = tiebreakerWinner ? tiebreakerWinner.name : (currentFight.result.includes(fighter1.name) ? fighter1.name : fighter2.name);
+    alert(`🏆 ¡DESEMPATE RESUELTO!\n\nGanador: ${winner}\n\nVotos: ${fighter1.name}: ${votes.fighter1}, ${fighter2.name}: ${votes.fighter2}, Empates: ${votes.tie}\n\nLa categoría ha terminado.`);
         
         this.loadCurrentFight();
     }
