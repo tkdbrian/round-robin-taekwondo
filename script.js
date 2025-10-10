@@ -1896,7 +1896,7 @@ class RoundRobinTournament {
                                 ${index === 0 && this.currentPhase === 'groups' ? '<span style="color: #27ae60;">👑</span>' : ''}
                             </div>
                             <small style="display: block; font-size: 0.8em; margin-top: 5px;">
-                                ${competitor.judgePoints} pts (${competitor.wins}G-${competitor.ties}E-${competitor.losses}P)
+                                ${competitor.victoryPoints} pts (${competitor.wins}G-${competitor.ties}E-${competitor.losses}P)
                             </small>
                         </div>
                     `).join('')}
