@@ -717,7 +717,7 @@ class RoundRobinTournament {
         currentFight.completedAt = new Date();
         currentFight.judgeVotes = { ...decisions };
 
-        // Avanzar a siguiente pelea (que debería terminar la categoría)
+        // Avanzar a siguiente pelea
         this.currentFightIndex++;
         this.updateStandings();
         this.updateFightHistory();
@@ -725,8 +725,27 @@ class RoundRobinTournament {
         this.saveToLocalStorage();
         
         // Mostrar mensaje de ganador del desempate
-    const winner = tiebreakerWinner ? tiebreakerWinner.name : (currentFight.result.includes(fighter1.name) ? fighter1.name : fighter2.name);
-    alert(`🏆 ¡DESEMPATE RESUELTO!\n\nGanador: ${winner}\n\nVotos: ${fighter1.name}: ${votes.fighter1}, ${fighter2.name}: ${votes.fighter2}, Empates: ${votes.tie}\n\nLa categoría ha terminado.`);
+        const winner = tiebreakerWinner ? tiebreakerWinner.name : (currentFight.result.includes(fighter1.name) ? fighter1.name : fighter2.name);
+        
+        // IMPORTANTE: Verificar si es sistema de brackets vs Round Robin
+        if (this.competitorCount > 5 && currentFight.bracket) {
+            // Es un desempate de bracket - puede continuar con otras llaves
+            console.log(`🎯 DESEMPATE DE BRACKET RESUELTO - Llave ${currentFight.bracket}, Ganador: ${winner}`);
+            alert(`🏆 ¡DESEMPATE RESUELTO!\n\nGanador: ${winner}\n\nVotos: ${fighter1.name}: ${votes.fighter1}, ${fighter2.name}: ${votes.fighter2}, Empates: ${votes.tie}\n\nContinuando con las peleas restantes...`);
+            
+            // Resolver la llave después del desempate
+            this.resolveBracketIfComplete(currentFight.bracket);
+            
+            // Actualizar display de brackets
+            this.updateBracketsDisplay();
+            
+            // Buscar automáticamente la siguiente pelea disponible
+            this.findNextAvailableFight();
+        } else {
+            // Es Round Robin tradicional - la categoría puede haber terminado
+            console.log(`🏁 DESEMPATE DE ROUND ROBIN RESUELTO - Ganador: ${winner}`);
+            alert(`🏆 ¡DESEMPATE RESUELTO!\n\nGanador: ${winner}\n\nVotos: ${fighter1.name}: ${votes.fighter1}, ${fighter2.name}: ${votes.fighter2}, Empates: ${votes.tie}\n\nLa categoría ha terminado.`);
+        }
         
         this.loadCurrentFight();
     }
