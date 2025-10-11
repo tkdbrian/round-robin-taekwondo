@@ -1298,8 +1298,8 @@ class RoundRobinTournament {
                 <td>${competitor.wins}</td>
                 <td>${competitor.ties}</td>
                 <td>${competitor.losses}</td>
-                <td><strong style="color: #2ecc71; font-size: 1.2em;">${competitor.victoryPoints}</strong></td>
-                <td><strong style="color: #e74c3c; font-size: 1.2em;">${competitor.judgePoints}</strong></td>
+                <td><strong style="color: #1e6837; font-size: 1.2em; font-weight: 900;">${competitor.victoryPoints}</strong></td>
+                <td><strong style="color: #b71c1c; font-size: 1.2em; font-weight: 900;">${competitor.judgePoints}</strong></td>
             `;
         });
     }
