@@ -2203,15 +2203,34 @@ class RoundRobinTournament {
             let champion = null;
             
             if (finalFight && finalFight.completed) {
-                // La final ya se jugó
-                if (finalFight.result.includes(winner1.name)) {
-                    champion = winner1;
-                    finalResult = `<div class="champion-announcement">🏆 CAMPEÓN: <strong>${winner1.name}</strong></div>`;
-                } else if (finalFight.result.includes(winner2.name)) {
-                    champion = winner2;
-                    finalResult = `<div class="champion-announcement">🏆 CAMPEÓN: <strong>${winner2.name}</strong></div>`;
-                } else if (finalFight.result === 'Empate') {
+                // La final ya se jugó - determinar ganador por votos de jueces
+                const votes = { fighter1: 0, fighter2: 0, tie: 0 };
+                Object.values(finalFight.judgeVotes).forEach(decision => {
+                    if (decision === '1') votes.fighter1++;
+                    else if (decision === '2') votes.fighter2++;
+                    else if (decision === 'tie') votes.tie++;
+                });
+
+                console.log('🏆 FINAL - Análisis de votos:', {
+                    fighter1: `${this.competitors[finalFight.fighter1Index].name} (${votes.fighter1} votos)`,
+                    fighter2: `${this.competitors[finalFight.fighter2Index].name} (${votes.fighter2} votos)`,
+                    ties: `${votes.tie} empates`,
+                    resultado: finalFight.result
+                });
+
+                if (votes.fighter1 > votes.fighter2) {
+                    // Ganó fighter1
+                    champion = this.competitors[finalFight.fighter1Index];
+                } else if (votes.fighter2 > votes.fighter1) {
+                    // Ganó fighter2  
+                    champion = this.competitors[finalFight.fighter2Index];
+                } else if (votes.tie > 0 || votes.fighter1 === votes.fighter2) {
+                    // Empate real en votos de jueces
                     finalResult = `<div class="champion-announcement">⚡ EMPATE EN FINAL - Se requiere desempate</div>`;
+                }
+
+                if (champion) {
+                    finalResult = `<div class="champion-announcement">🏆 CAMPEÓN: <strong>${champion.name}</strong></div>`;
                 }
             }
             
