@@ -1398,55 +1398,77 @@ header h1 i {
     cursor: pointer;
 }
 
-/* Sistema de Penalizaciones - Versión Compacta */
+.timer-settings select:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+/* Estilos para el Sistema de Penalizaciones - Versión Compacta */
 .penalties-section {
-    margin-top: 8px;
-    padding: 8px;
-    border-top: 1px solid #ecf0f1;
-    background: rgba(236, 240, 241, 0.3);
+    background: rgba(236, 240, 241, 0.95);
     border-radius: 6px;
+    padding: 6px;
+    margin: 6px 0;
+    border: 1px solid #bdc3c7;
 }
 
 .competitors-penalties-horizontal {
     display: flex;
-    gap: 8px;
+    gap: 6px;
 }
 
 .competitor-penalties {
     flex: 1;
+    background: rgba(255, 255, 255, 0.9);
     border-radius: 6px;
-    overflow: hidden;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    border: 2px solid #bdc3c7;
+    padding: 6px;
+    border: 2px solid transparent;
+}
+
+.competitor-penalties.red {
+    border-color: #e74c3c;
+}
+
+.competitor-penalties.blue {
+    border-color: #3498db;
 }
 
 .competitor-header {
-    padding: 6px 8px;
-    font-weight: bold;
     text-align: center;
+    font-weight: bold;
+    padding: 4px 6px;
+    border-radius: 4px;
+    margin-bottom: 6px;
     font-size: 11px;
 }
 
+.competitor-header.red {
+    background: #e74c3c;
+    color: white;
+}
+
+.competitor-header.blue {
+    background: #3498db;
+    color: white;
+}
+
 .penalty-controls-compact {
-    background: white;
-    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .penalty-row-compact {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 4px;
     font-size: 10px;
+    padding: 2px 0;
 }
 
-.penalty-row-compact:last-child {
-    margin-bottom: 0;
-}
-
-.penalty-row-compact span:first-child {
+.penalty-row-compact span {
+    font-weight: 500;
     color: #2c3e50;
-    font-weight: 600;
     min-width: 30px;
 }
 
@@ -1461,32 +1483,32 @@ header h1 i {
     height: 22px;
     border: none;
     border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
     font-size: 12px;
-    transition: all 0.2s ease;
+    font-weight: bold;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: all 0.2s ease;
 }
 
 .penalty-btn-small.minus {
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    background: #e74c3c;
     color: white;
 }
 
 .penalty-btn-small.minus:hover {
-    background: linear-gradient(135deg, #c0392b, #a93226);
+    background: #c0392b;
     transform: scale(1.1);
 }
 
 .penalty-btn-small.plus {
-    background: linear-gradient(135deg, #27ae60, #229954);
+    background: #27ae60;
     color: white;
 }
 
 .penalty-btn-small.plus:hover {
-    background: linear-gradient(135deg, #229954, #1e8449);
+    background: #219a52;
     transform: scale(1.1);
 }
 
@@ -1496,7 +1518,7 @@ header h1 i {
     font-weight: bold;
     font-size: 12px;
     color: #2c3e50;
-    background: #ecf0f1;
+    background: rgba(236, 240, 241, 0.8);
     padding: 2px 4px;
     border-radius: 3px;
     border: 1px solid #bdc3c7;
@@ -1507,7 +1529,7 @@ header h1 i {
     justify-content: center;
     align-items: center;
     gap: 4px;
-    background: linear-gradient(135deg, #34495e, #2c3e50);
+    background: #34495e;
     color: white;
     padding: 4px;
     border-radius: 4px;
@@ -1529,11 +1551,6 @@ header h1 i {
     padding: 2px 6px;
     border-radius: 4px;
     border: 1px solid #e74c3c;
-}
-
-.timer-settings select:focus {
-    outline: none;
-    border-color: #3498db;
 }
 
 /* Responsive para el cronómetro - EQUILIBRIO PERFECTO */
@@ -1674,6 +1691,22 @@ header h1 i {
     }
 }
 
+/* Animaciones para las alertas */
+@keyframes alertPulse {
+    0% { 
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+    50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+    100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
 @media (max-width: 480px) {
     .container {
         padding: 10px;
@@ -1694,7 +1727,7 @@ header h1 i {
     
     .floating-timer {
         position: fixed !important;
-        top: 10px !important;
+        bottom: 10px !important;
         right: 10px !important;
         left: auto !important;
         margin-bottom: 0 !important;

@@ -1,4 +1,24 @@
 // Sistema Round Robin - Taekwon-Do
+const APP_VERSION = '2025-10-10-2';
+
+(function enforceLatestVersion() {
+    try {
+        const storedVersion = localStorage.getItem('taekwondo_app_version');
+        if (storedVersion !== APP_VERSION) {
+            const keys = Object.keys(localStorage);
+            keys.forEach(key => {
+                if (key.startsWith('taekwondo_') && key !== 'taekwondo_app_version') {
+                    localStorage.removeItem(key);
+                }
+            });
+            localStorage.setItem('taekwondo_app_version', APP_VERSION);
+            console.info(`Actualizando sistema Taekwon-Do a la versión ${APP_VERSION}`);
+        }
+    } catch (error) {
+        console.warn('No fue posible sincronizar la versión de la aplicación.', error);
+    }
+})();
+
 let tournament; // Variable global para acceso desde HTML
 
 class RoundRobinTournament {
@@ -59,7 +79,6 @@ class RoundRobinTournament {
         // Modal
         document.getElementById('close-tournament-modal').addEventListener('click', () => this.closeTournamentModal());
         document.getElementById('new-tournament').addEventListener('click', () => this.newTournament());
-        document.getElementById('export-results').addEventListener('click', () => this.exportResults());
         
         // Cronómetro
         document.getElementById('timer-start').addEventListener('click', () => this.startTimer());
@@ -74,6 +93,7 @@ class RoundRobinTournament {
         
         // Inicializar controles del cronómetro
         this.initializeTimer();
+        document.getElementById('export-results').addEventListener('click', () => this.exportResults());
         
         // Manejo de categoría personalizada
         document.getElementById('belt-category').addEventListener('change', (e) => {
@@ -124,30 +144,6 @@ class RoundRobinTournament {
             <i class="fas fa-play"></i>
             ${buttonText}
         `;
-        
-        // Actualizar el contador de peleas en el header
-        this.updateFightCountDisplay(count);
-    }
-
-    updateFightCountDisplay(count) {
-        let totalFights;
-        if (count <= 5) {
-            // Round Robin: n*(n-1)/2 peleas
-            totalFights = (count * (count - 1)) / 2;
-        } else if (count == 6) {
-            // 2 llaves de 3: (3*2/2)*2 + 1 final = 6 + 1 = 7
-            totalFights = 7;
-        } else if (count == 7) {
-            // 1 llave de 4 + 1 llave de 3: (4*3/2) + (3*2/2) + 1 final = 6 + 3 + 1 = 10
-            totalFights = 10;
-        } else if (count == 8) {
-            // 2 llaves de 4: (4*3/2)*2 + 1 final = 12 + 1 = 13
-            totalFights = 13;
-        }
-        
-        // Actualizar ambos displays
-        document.getElementById('fight-display').textContent = `Pelea 1 de ${totalFights}`;
-        document.getElementById('current-fight-info').textContent = `Pelea 1 de ${totalFights}`;
     }
 
     startTournament() {
@@ -252,16 +248,6 @@ class RoundRobinTournament {
         this.loadCurrentFight();
         this.updateStandings();
         this.updateScheduleDisplay();
-        
-        // Actualizar contador de peleas con la cantidad real
-        this.updateRealFightCount();
-    }
-
-    updateRealFightCount() {
-        // Actualizar con el número real de peleas generadas
-        const totalFights = this.fights.length;
-        document.getElementById('fight-display').textContent = `Pelea 1 de ${totalFights}`;
-        document.getElementById('current-fight-info').textContent = `Pelea 1 de ${totalFights}`;
     }
 
     generateFightSchedule() {
@@ -459,14 +445,35 @@ class RoundRobinTournament {
         tournamentInfo.style.display = 'block';
     }
 
-    checkForTieAndCreateTiebreaker() {
-        // Ordenar competidores según las reglas actuales
-        const sortedCompetitors = [...this.competitors].sort((a, b) => {
+    // Función estándar para ordenar competidores según reglas oficiales de Taekwon-Do
+    sortCompetitorsByRanking(competitors) {
+        return [...competitors].sort((a, b) => {
+            // 1º CRITERIO: Número de peleas GANADAS
+            if (b.wins !== a.wins) {
+                return b.wins - a.wins;
+            }
+            // 2º CRITERIO: Puntos de jueces (solo si empatan en ganadas)
+            if (b.judgePoints !== a.judgePoints) {
+                return b.judgePoints - a.judgePoints;
+            }
+            // 3º CRITERIO: Desempates ganados (si los hay)
+            const aTiebreakers = a.tiebreakerWins || 0;
+            const bTiebreakers = b.tiebreakerWins || 0;
+            if (bTiebreakers !== aTiebreakers) {
+                return bTiebreakers - aTiebreakers;
+            }
+            // 4º CRITERIO: Puntos de victoria como último recurso
             if (b.victoryPoints !== a.victoryPoints) {
                 return b.victoryPoints - a.victoryPoints;
             }
-            return b.judgePoints - a.judgePoints;
+            // 5º CRITERIO: Orden alfabético
+            return a.name.localeCompare(b.name);
         });
+    }
+
+    checkForTieAndCreateTiebreaker() {
+        // Ordenar competidores usando la función estándar
+        const sortedCompetitors = this.sortCompetitorsByRanking(this.competitors);
 
         // Encontrar empates en cualquier posición (no solo primer lugar)
         if (sortedCompetitors.length >= 2) {
@@ -589,7 +596,7 @@ class RoundRobinTournament {
         }, 100);
     }
 
-    createTiebreakerFight(fighter1, fighter2) {
+    createTiebreakerFight(fighter1, fighter2, bracketId = null) {
         // Buscar índices de los competidores
         const fighter1Index = this.competitors.findIndex(c => c.id === fighter1.id);
         const fighter2Index = this.competitors.findIndex(c => c.id === fighter2.id);
@@ -614,11 +621,13 @@ class RoundRobinTournament {
                 judge4: null
             },
             isTiebreaker: true, // Marcar como combate de desempate
-            tiebreakerNumber: tiebreakerCount + 1 // Número de desempate
+            tiebreakerNumber: tiebreakerCount + 1, // Número de desempate
+            bracket: bracketId
         };
 
-        // Agregar el combate de desempate
-        this.fights.push(tiebreakerFight);
+    // Agregar el combate de desempate
+    this.fights.push(tiebreakerFight);
+    this.currentFightIndex = this.fights.length - 1;
         
         // No incrementar currentFightIndex, seguirá en el nuevo combate
         // Actualizar displays
@@ -626,8 +635,10 @@ class RoundRobinTournament {
         this.saveToLocalStorage();
         
         // Mostrar mensaje de desempate
-        const tiebreakerMsg = tiebreakerCount === 0 ? 'COMBATE DE DESEMPATE' : `DESEMPATE #${tiebreakerCount + 1}`;
-        alert(`🥊 ${tiebreakerMsg}\n\n${fighter1.name} vs ${fighter2.name}\n\nAmbos competidores están empatados en:\n• Puntos: ${fighter1.victoryPoints}\n• Jueces: ${fighter1.judgePoints}\n\n¡Se realizará un combate${tiebreakerCount > 0 ? ' adicional' : ''} para determinar el ganador!`);
+    const bracketInfo = bracketId ? this.brackets.find(b => b.id === bracketId) : null;
+    const bracketLabel = bracketInfo ? ` (${bracketInfo.name})` : '';
+    const tiebreakerMsg = tiebreakerCount === 0 ? `COMBATE DE DESEMPATE${bracketLabel}` : `DESEMPATE #${tiebreakerCount + 1}${bracketLabel}`;
+    alert(`🥊 ${tiebreakerMsg}\n\n${fighter1.name} vs ${fighter2.name}\n\nAmbos competidores están empatados en:\n• Puntos: ${fighter1.victoryPoints}\n• Jueces: ${fighter1.judgePoints}\n\n¡Se realizará un combate${tiebreakerCount > 0 ? ' adicional' : ''} para determinar el ganador!`);
         
         // Cargar el combate de desempate
         this.loadCurrentFight();
@@ -722,9 +733,23 @@ class RoundRobinTournament {
 
     loadCurrentFight() {
         console.log('loadCurrentFight - currentFightIndex:', this.currentFightIndex, 'fights.length:', this.fights.length);
-        console.log('Peleas disponibles:', this.fights.map(f => ({completed: f.completed, isFinal: f.isFinal})));
+        console.log('Peleas disponibles:', this.fights.map((f, index) => ({
+            index: index,
+            completed: f.completed, 
+            bracket: f.bracket,
+            fighters: f.fighter1Index !== undefined ? `${this.competitors[f.fighter1Index]?.name} vs ${this.competitors[f.fighter2Index]?.name}` : 'N/A',
+            isFinal: f.isFinal
+        })));
         
         if (this.currentFightIndex >= this.fights.length) {
+            // Para sistema de llaves (6-8 competidores), verificar si se puede generar pelea final
+            if (this.competitorCount > 5 && this.currentPhase === 'groups') {
+                // Verificar si todas las llaves están completas y generar final automáticamente
+                if (this.checkAndGenerateFinalIfReady()) {
+                    return; // Se generó la pelea final, continuar
+                }
+            }
+            
             // Solo verificar empates para Round Robin, no para sistema de brackets
             if (this.competitorCount <= 5) {
                 // Verificar si hay empate y necesita desempate
@@ -739,7 +764,7 @@ class RoundRobinTournament {
         }
 
         const currentFight = this.fights[this.currentFightIndex];
-        console.log('Pelea actual:', currentFight);
+        console.log('Pelea actual (índice ' + this.currentFightIndex + '):', currentFight);
         
         if (currentFight.completed) {
             console.log('La pelea actual ya está completada, avanzando...');
@@ -843,7 +868,7 @@ class RoundRobinTournament {
 
         // VERIFICAR SI ES PELEA FINAL - NO PUEDE HABER EMPATES
         const isFinale = this.isFinalFight(currentFight);
-
+        
         // Determinar resultado - SIEMPRE GANA MAYORÍA DE VOTOS
         if (votes.tie > votes.fighter1 && votes.tie > votes.fighter2) {
             // EMPATE tiene mayoría de votos
@@ -869,10 +894,18 @@ class RoundRobinTournament {
             victoryPoints = `${fighter2.name}: 3 pts, ${fighter1.name}: 0 pts`;
             judgePoints = `${fighter2.name}: +${votes.fighter2} pts, ${fighter1.name}: +${votes.fighter1} pts`;
         } else if (votes.fighter1 === votes.fighter2 && votes.fighter1 > votes.tie) {
-            // Fighter1 y Fighter2 empatan en votos pero ambos superan a empate - gana fighter1 por criterio
-            winner = `${fighter1.name} (Ganador)`;
-            victoryPoints = `${fighter1.name}: 3 pts, ${fighter2.name}: 0 pts`;
-            judgePoints = `${fighter1.name}: +${votes.fighter1} pts, ${fighter2.name}: +${votes.fighter2} pts`;
+            // Fighter1 y Fighter2 empatan en votos - DEBE SER EMPATE
+            if (isFinale) {
+                // Es pelea final pero empate - PERMITIR pero crear nueva pelea
+                winner = '⚡ EMPATE - Nueva pelea requerida';
+                victoryPoints = 'Los competidores deberán pelear nuevamente';
+                judgePoints = `Votos: ${fighter1.name}: ${votes.fighter1}, ${fighter2.name}: ${votes.fighter2}, Empates: ${votes.tie}`;
+            } else {
+                // Empate normal en ronda clasificatoria
+                winner = 'Empate';
+                victoryPoints = `${fighter1.name}: 1 pt, ${fighter2.name}: 1 pt`;
+                judgePoints = `${fighter1.name}: +${votes.fighter1} pts, ${fighter2.name}: +${votes.fighter2} pts`;
+            }
         } else if (votes.fighter1 === votes.tie && votes.fighter1 > votes.fighter2) {
             // Fighter1 y empate empatan en votos pero ambos superan a fighter2 - gana fighter1 por criterio
             winner = `${fighter1.name} (Ganador)`;
@@ -1054,6 +1087,20 @@ class RoundRobinTournament {
 
         // Avanzar a siguiente pelea
         this.currentFightIndex++;
+
+        // Buscar siguiente pelea pendiente priorizando combates posteriores, si no hay, la primera pendiente
+        const forwardPendingIndex = this.fights.findIndex((fight, index) => index >= this.currentFightIndex && !fight.completed);
+        if (forwardPendingIndex !== -1) {
+            this.currentFightIndex = forwardPendingIndex;
+        } else {
+            const anyPendingIndex = this.fights.findIndex(fight => !fight.completed);
+            if (anyPendingIndex !== -1) {
+                this.currentFightIndex = anyPendingIndex;
+                console.log(`Saltando a pelea pendiente encontrada en índice ${this.currentFightIndex}`);
+            } else {
+                console.log('No se encontraron más peleas pendientes');
+            }
+        }
         
         // Para categorías de 3, reordenar dinámicamente para que el ganador descanse
         if (this.competitors.length === 3 && this.currentFightIndex < this.fights.length) {
@@ -1061,15 +1108,19 @@ class RoundRobinTournament {
         }
         
         // Actualizar displays
-        this.updateStandings();
-        this.updateFightHistory();
-        this.updateScheduleDisplay();
-        this.saveToLocalStorage(); // Auto-guardar progreso
+    this.updateStandings();
+    this.updateFightHistory();
+    this.updateScheduleDisplay();
         
         // Si es sistema de llaves, actualizar brackets
         if (this.competitorCount > 5) {
+            if (this.currentPhase === 'groups' && currentFight.bracket) {
+                this.updateBracketStatistics();
+                this.resolveBracketIfComplete(currentFight.bracket);
+            }
+
             this.updateBracketsDisplay();
-            
+
             // Verificar si se completó la fase de grupos
             if (this.currentPhase === 'groups' && this.checkGroupStageComplete()) {
                 document.getElementById('current-phase').textContent = 'Fase de Grupos Completada';
@@ -1077,6 +1128,9 @@ class RoundRobinTournament {
             }
         }
         
+        this.saveToLocalStorage(); // Auto-guardar progreso
+        this.createBackupCopy(); // Backup adicional
+
         // Cargar siguiente pelea
         this.loadCurrentFight();
     }
@@ -1983,6 +2037,9 @@ class RoundRobinTournament {
 
         // Recalcular estadísticas basándose en peleas completadas de brackets
         this.fights.forEach(fight => {
+            if (fight.isTiebreaker) {
+                return; // Los desempates no afectan las estadísticas de llaves
+            }
             if (fight.completed && fight.bracket) { // Solo peleas de brackets
                 const fighter1 = this.competitors[fight.fighter1Index];
                 const fighter2 = this.competitors[fight.fighter2Index];
@@ -2150,36 +2207,248 @@ class RoundRobinTournament {
     }
 
     determineGroupWinners() {
-        this.groupWinners = [];
-        
-        this.brackets.forEach(bracket => {
-            // Ordenar competidores de la llave por puntos CORRECTOS
-            const sortedCompetitors = bracket.competitors.sort((a, b) => {
-                // Primero: victorias
-                if (b.victoryPoints !== a.victoryPoints) {
-                    return b.victoryPoints - a.victoryPoints;
+        const resolvedWinners = [];
+        let pendingResolution = false;
+
+        for (const bracket of this.brackets) {
+            if (!bracket.competitors || bracket.competitors.length === 0) {
+                continue;
+            }
+
+            bracket.competitors.sort((a, b) => this.compareBracketCompetitors(a, b));
+
+            const leader = bracket.competitors[0];
+            const tiedGroup = bracket.competitors.filter(competitor =>
+                this.haveSameBracketMetrics(competitor, leader)
+            );
+
+            if (tiedGroup.length === bracket.competitors.length && bracket.competitors.length > 1) {
+                pendingResolution = true;
+                bracket.completed = false;
+                bracket.winner = null;
+                this.restartBracket(bracket.id);
+                break;
+            }
+
+            if (tiedGroup.length > 1) {
+                pendingResolution = true;
+                bracket.completed = false;
+                bracket.winner = null;
+
+                if (tiedGroup.length === 2) {
+                    this.scheduleBracketTiebreaker(bracket.id, tiedGroup[0], tiedGroup[1]);
+                } else {
+                    this.restartBracket(bracket.id);
                 }
-                // Segundo: jueces
-                if (b.judgePoints !== a.judgePoints) {
-                    return b.judgePoints - a.judgePoints;
-                }
-                // Tercero: desempates ganados
-                const aTiebreakers = a.tiebreakerWins || 0;
-                const bTiebreakers = b.tiebreakerWins || 0;
-                if (bTiebreakers !== aTiebreakers) {
-                    return bTiebreakers - aTiebreakers;
-                }
-                // Cuarto: alfabético
-                return a.name.localeCompare(b.name);
-            });
-            
-            // El primer lugar de cada llave avanza a la FINAL
-            this.groupWinners.push(sortedCompetitors[0].id);
+                continue;
+            }
+
+            resolvedWinners.push(leader.id);
             bracket.completed = true;
-            bracket.winner = sortedCompetitors[0]; // Guardar ganador para mostrar
+            bracket.winner = leader;
+        }
+
+        if (!pendingResolution && resolvedWinners.length === this.brackets.length) {
+            this.groupWinners = resolvedWinners;
+            console.log('Ganadores de llaves:', this.groupWinners);
+            return true;
+        }
+
+        this.groupWinners = resolvedWinners;
+        return false;
+    }
+
+    getBracketMetrics(competitor) {
+        return {
+            wins: competitor.bracketWins ?? competitor.wins ?? 0,
+            judgePoints: competitor.bracketJudgePoints ?? competitor.judgePoints ?? 0,
+            tiebreakerWins: competitor.tiebreakerWins ?? 0,
+            victoryPoints: competitor.bracketVictoryPoints ?? competitor.victoryPoints ?? 0
+        };
+    }
+
+    compareBracketCompetitors(a, b) {
+        const metricsA = this.getBracketMetrics(a);
+        const metricsB = this.getBracketMetrics(b);
+
+        if (metricsB.wins !== metricsA.wins) {
+            return metricsB.wins - metricsA.wins;
+        }
+        if (metricsB.judgePoints !== metricsA.judgePoints) {
+            return metricsB.judgePoints - metricsA.judgePoints;
+        }
+        if (metricsB.tiebreakerWins !== metricsA.tiebreakerWins) {
+            return metricsB.tiebreakerWins - metricsA.tiebreakerWins;
+        }
+        if (metricsB.victoryPoints !== metricsA.victoryPoints) {
+            return metricsB.victoryPoints - metricsA.victoryPoints;
+        }
+        return a.name.localeCompare(b.name);
+    }
+
+    haveSameBracketMetrics(a, b) {
+        const metricsA = this.getBracketMetrics(a);
+        const metricsB = this.getBracketMetrics(b);
+
+        return (
+            metricsA.wins === metricsB.wins &&
+            metricsA.judgePoints === metricsB.judgePoints &&
+            metricsA.tiebreakerWins === metricsB.tiebreakerWins &&
+            metricsA.victoryPoints === metricsB.victoryPoints
+        );
+    }
+
+    scheduleBracketTiebreaker(bracketId, fighter1, fighter2) {
+        const fighter1Index = this.competitors.findIndex(c => c.id === fighter1.id);
+        const fighter2Index = this.competitors.findIndex(c => c.id === fighter2.id);
+
+        const pendingFight = this.fights.find(fight =>
+            fight.isTiebreaker &&
+            !fight.completed &&
+            this.isSameFightPair(fight, fighter1Index, fighter2Index)
+        );
+        if (pendingFight) {
+            return;
+        }
+
+        const resolvedFight = this.fights.find(fight =>
+            fight.isTiebreaker &&
+            fight.completed &&
+            fight.result &&
+            fight.result.includes('ganó DESEMPATE') &&
+            this.isSameFightPair(fight, fighter1Index, fighter2Index)
+        );
+        if (resolvedFight) {
+            return;
+        }
+
+        this.createTiebreakerFight(fighter1, fighter2, bracketId);
+    }
+
+    isSameFightPair(fight, fighter1Index, fighter2Index) {
+        return (
+            (fight.fighter1Index === fighter1Index && fight.fighter2Index === fighter2Index) ||
+            (fight.fighter1Index === fighter2Index && fight.fighter2Index === fighter1Index)
+        );
+    }
+
+    restartBracket(bracketId) {
+        const bracket = this.brackets.find(b => b.id === bracketId);
+        if (!bracket) {
+            return;
+        }
+
+        const competitorIds = bracket.competitors.map(c => c.id);
+
+        this.fights = this.fights.filter(fight => {
+            if (fight.bracket === bracketId) {
+                return false;
+            }
+            if (fight.isTiebreaker) {
+                const fighter1Id = this.competitors[fight.fighter1Index]?.id;
+                const fighter2Id = this.competitors[fight.fighter2Index]?.id;
+                if (competitorIds.includes(fighter1Id) && competitorIds.includes(fighter2Id)) {
+                    return false;
+                }
+            }
+            return true;
         });
-        
-        console.log('Ganadores de llaves:', this.groupWinners);
+
+        for (let i = 0; i < bracket.competitors.length; i++) {
+            for (let j = i + 1; j < bracket.competitors.length; j++) {
+                const fighter1Index = this.competitors.findIndex(c => c.id === bracket.competitors[i].id);
+                const fighter2Index = this.competitors.findIndex(c => c.id === bracket.competitors[j].id);
+                this.fights.push({
+                    fighter1Index,
+                    fighter2Index,
+                    bracket: bracketId,
+                    completed: false,
+                    result: null,
+                    judgeVotes: {
+                        judge1: null,
+                        judge2: null,
+                        judge3: null,
+                        judge4: null
+                    }
+                });
+            }
+        }
+
+        bracket.completed = false;
+        bracket.winner = null;
+        this.groupWinners = this.groupWinners.filter(id => !competitorIds.includes(id));
+
+        this.currentFightIndex = this.fights.findIndex(fight => !fight.completed);
+        if (this.currentFightIndex === -1) {
+            this.currentFightIndex = this.fights.length > 0 ? this.fights.length - 1 : 0;
+        }
+
+        this.updateScheduleDisplay();
+        this.updateBracketsDisplay();
+        this.saveToLocalStorage();
+        if (this.fights.length > 0) {
+            this.loadCurrentFight();
+        }
+
+        const bracketInfo = this.brackets.find(b => b.id === bracketId);
+        alert(`🔁 ${bracketInfo ? bracketInfo.name : 'Llave'} reiniciada por empate múltiple. Se reprogramaron todas sus peleas.`);
+    }
+
+    resolveBracketIfComplete(bracketId) {
+        if (this.currentPhase !== 'groups') {
+            return;
+        }
+
+        const bracket = this.brackets.find(b => b.id === bracketId);
+        if (!bracket) {
+            return;
+        }
+
+        const pendingNonTiebreaker = this.fights.some(fight =>
+            fight.bracket === bracketId && !fight.isTiebreaker && !fight.completed
+        );
+        if (pendingNonTiebreaker) {
+            return;
+        }
+
+        bracket.competitors.sort((a, b) => this.compareBracketCompetitors(a, b));
+
+        const leader = bracket.competitors[0];
+        const tiedGroup = bracket.competitors.filter(competitor =>
+            this.haveSameBracketMetrics(competitor, leader)
+        );
+
+        if (tiedGroup.length === bracket.competitors.length && bracket.competitors.length > 1) {
+            bracket.completed = false;
+            bracket.winner = null;
+            this.restartBracket(bracketId);
+            return;
+        }
+
+        if (tiedGroup.length > 1) {
+            bracket.completed = false;
+            bracket.winner = null;
+            if (tiedGroup.length === 2) {
+                this.scheduleBracketTiebreaker(bracketId, tiedGroup[0], tiedGroup[1]);
+            } else {
+                this.restartBracket(bracketId);
+            }
+            return;
+        }
+
+        bracket.completed = true;
+        bracket.winner = leader;
+
+        const competitorIds = bracket.competitors.map(c => c.id);
+        this.groupWinners = this.groupWinners.filter(id => !competitorIds.includes(id));
+        if (!this.groupWinners.includes(leader.id)) {
+            this.groupWinners.push(leader.id);
+        }
+
+        if (this.groupWinners.length === this.brackets.length && this.checkGroupStageComplete()) {
+            document.getElementById('current-phase').textContent = 'Fase de Grupos Completada';
+            document.getElementById('next-phase').style.display = 'block';
+        }
     }
 
     generateFinalFight() {
@@ -2207,10 +2476,51 @@ class RoundRobinTournament {
         this.currentFightIndex = this.fights.length - 1;
     }
 
+    checkAndGenerateFinalIfReady() {
+        // Verificar si todas las llaves están completas
+        if (!this.checkGroupStageComplete()) {
+            return false; // Aún hay peleas pendientes
+        }
+
+        // Determinar ganadores de llaves
+        const winnersReady = this.determineGroupWinners();
+        if (!winnersReady) {
+            console.log('Los ganadores de llaves aún no están determinados');
+            return false; // Aún hay empates por resolver
+        }
+
+        // Si llegamos aquí, tenemos ganadores listos para la final
+        console.log('Generando pelea final automáticamente...');
+        this.generateFinalFight();
+        this.currentPhase = 'final';
+        document.getElementById('current-phase').textContent = 'FINAL';
+        document.getElementById('next-phase').style.display = 'none';
+        
+        // Actualizar displays
+        this.updateBracketsDisplay();
+        this.updateScheduleDisplay();
+        
+        // Mostrar mensaje de transición
+        const fighter1 = this.competitors[this.fights[this.currentFightIndex].fighter1Index];
+        const fighter2 = this.competitors[this.fights[this.currentFightIndex].fighter2Index];
+        
+        alert(`🏆 FASE DE GRUPOS COMPLETADA 🏆\n\n` +
+              `Ganadores de llaves determinados.\n\n` +
+              `PELEA FINAL:\n${fighter1.name} vs ${fighter2.name}\n\n` +
+              `¡Que comience la final!`);
+        
+        return true; // Se generó la pelea final
+    }
+
     nextPhase() {
         if (this.currentPhase === 'groups') {
             if (this.checkGroupStageComplete()) {
-                this.determineGroupWinners();
+                const winnersReady = this.determineGroupWinners();
+                if (!winnersReady) {
+                    this.updateBracketsDisplay();
+                    this.updateScheduleDisplay();
+                    return;
+                }
                 this.generateFinalFight();
                 this.currentPhase = 'final';
                 document.getElementById('current-phase').textContent = 'FINAL';
@@ -2241,6 +2551,38 @@ class RoundRobinTournament {
         
         localStorage.setItem('taekwondo_tournament', JSON.stringify(tournamentData));
         console.log('✅ Torneo guardado automáticamente');
+    }
+
+    createBackupCopy() {
+        try {
+            // Crear backup con timestamp
+            const backupKey = `taekwondo_backup_${Date.now()}`;
+            const mainData = localStorage.getItem('taekwondo_tournament');
+            if (mainData) {
+                localStorage.setItem(backupKey, mainData);
+                console.log('🔒 Backup de seguridad creado');
+                
+                // Mantener solo los 3 backups más recientes
+                this.cleanOldBackups();
+            }
+        } catch (error) {
+            console.warn('⚠️ No se pudo crear backup:', error);
+        }
+    }
+
+    cleanOldBackups() {
+        try {
+            const keys = Object.keys(localStorage);
+            const backupKeys = keys.filter(key => key.startsWith('taekwondo_backup_'))
+                                 .sort((a, b) => b.localeCompare(a)); // Más recientes primero
+            
+            // Eliminar backups antiguos, mantener solo 3
+            backupKeys.slice(3).forEach(key => {
+                localStorage.removeItem(key);
+            });
+        } catch (error) {
+            console.warn('⚠️ Error limpiando backups antiguos:', error);
+        }
     }
 
     loadFromLocalStorage() {
@@ -2316,6 +2658,9 @@ class RoundRobinTournament {
         this.updateTimerDisplay();
         this.showTimer();
         this.initializePenalties();
+        
+        // Mostrar sección de penalizaciones cuando se inicia el timer
+        document.getElementById('penalties-section').style.display = 'block';
     }
     
     showTimer() {
@@ -2330,6 +2675,7 @@ class RoundRobinTournament {
         if (!this.timer.isRunning) {
             this.timer.isRunning = true;
             
+            // Usar try-catch para máxima seguridad
             try {
                 this.timer.intervalId = setInterval(() => {
                     this.timer.seconds--;
@@ -2342,6 +2688,7 @@ class RoundRobinTournament {
                     }
                 }, 1000);
                 
+                // Actualizar botones de forma segura
                 const startBtn = document.getElementById('timer-start');
                 const pauseBtn = document.getElementById('timer-pause');
                 if (startBtn) startBtn.style.display = 'none';
@@ -2363,6 +2710,7 @@ class RoundRobinTournament {
                     this.timer.intervalId = null;
                 }
                 
+                // Actualizar botones de forma segura
                 const startBtn = document.getElementById('timer-start');
                 const pauseBtn = document.getElementById('timer-pause');
                 if (startBtn) startBtn.style.display = 'inline-block';
@@ -2382,18 +2730,27 @@ class RoundRobinTournament {
     
     stopTimer() {
         this.pauseTimer();
+        // Finalizar sin confirmación para evitar interrupciones
         this.onTimerFinished();
     }
     
-    setTimerDuration(minutes) {
-        try {
-            const seconds = Math.floor(parseFloat(minutes) * 60);
-            this.timer.originalSeconds = seconds;
-            this.timer.seconds = seconds;
-            this.updateTimerDisplay();
-        } catch (e) {
-            console.error('Error configurando tiempo:', e);
+    onTimerFinished() {
+        console.log('TIEMPO FINALIZADO');
+        // Solo log - sin alertas que puedan interrumpir
+    }
+    
+    clearTimerWarnings() {
+        const timerDisplay = document.getElementById('timer-display');
+        if (timerDisplay) {
+            timerDisplay.className = 'timer-display';
         }
+    }
+    
+    setTimerDuration(minutes) {
+        const seconds = Math.floor(parseFloat(minutes) * 60);
+        this.timer.originalSeconds = seconds;
+        this.timer.seconds = seconds;
+        this.updateTimerDisplay();
     }
     
     updateTimerDisplay() {
@@ -2405,6 +2762,7 @@ class RoundRobinTournament {
         if (timerDisplay) {
             timerDisplay.textContent = display;
             
+            // Cambiar colores según el tiempo restante - SIMPLE Y SEGURO
             timerDisplay.className = 'timer-display';
             if (this.timer.seconds <= 10) {
                 timerDisplay.classList.add('danger');
@@ -2415,98 +2773,138 @@ class RoundRobinTournament {
     }
     
     checkTimerWarnings() {
+        // Solo avisos simples - sin sobrecargar el sistema
         if (!this.categoryInfo.timerWarnings) return;
         
         if (this.timer.seconds === 30) {
             console.log('30 segundos restantes');
         } else if (this.timer.seconds === 10) {
             console.log('10 segundos restantes');
+            // Solo cambio de color, sin animaciones pesadas
+        }
+    }
+    
+    showTimerAlert(message, type) {
+        // Crear notificación temporal
+        const alert = document.createElement('div');
+        alert.className = `timer-alert timer-alert-${type}`;
+        alert.textContent = message;
+        alert.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: ${type === 'danger' ? '#e74c3c' : '#f39c12'};
+            color: white;
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            z-index: 2000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            animation: alertPulse 0.5s ease-in-out;
+        `;
+        
+        document.body.appendChild(alert);
+        
+        // Reproducir sonido si es posible
+        this.playTimerSound(type);
+        
+        // Remover después de 2 segundos
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.parentNode.removeChild(alert);
+            }
+        }, 2000);
+    }
+    
+    playTimerSound(type) {
+        // Crear audio context para sonidos
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = type === 'danger' ? 800 : 600;
+            oscillator.type = 'square';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        } catch (e) {
+            console.log('Audio no disponible');
         }
     }
     
     clearTimerWarnings() {
         const timerDisplay = document.getElementById('timer-display');
-        if (timerDisplay) {
-            timerDisplay.className = 'timer-display';
-        }
+        timerDisplay.className = 'timer-display';
     }
     
     onTimerFinished() {
-        console.log('TIEMPO FINALIZADO');
+        this.showTimerAlert('🔚 TIEMPO FINALIZADO', 'danger');
+        // Opcional: avanzar automáticamente o requerir confirmación manual
     }
     
     toggleTimerMinimize() {
-        try {
-            const timer = document.getElementById('floating-timer');
-            const button = document.getElementById('timer-minimize');
-            
-            if (!timer || !button) return;
-            
-            this.timer.isMinimized = !this.timer.isMinimized;
-            
-            if (this.timer.isMinimized) {
-                timer.classList.add('minimized');
-                button.textContent = '+';
-            } else {
-                timer.classList.remove('minimized');
-                button.textContent = '−';
-            }
-        } catch (e) {
-            console.error('Error minimizando cronómetro:', e);
+        const timer = document.getElementById('floating-timer');
+        const button = document.getElementById('timer-minimize');
+        
+        this.timer.isMinimized = !this.timer.isMinimized;
+        
+        if (this.timer.isMinimized) {
+            timer.classList.add('minimized');
+            button.textContent = '+';
+        } else {
+            timer.classList.remove('minimized');
+            button.textContent = '−';
         }
     }
     
     makeTimerDraggable() {
-        try {
-            const timer = document.getElementById('floating-timer');
-            const header = timer.querySelector('.timer-header');
+        const timer = document.getElementById('floating-timer');
+        const header = timer.querySelector('.timer-header');
+        let isDragging = false;
+        let startX, startY, initialX, initialY;
+        
+        header.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            initialX = timer.offsetLeft;
+            initialY = timer.offsetTop;
+            header.style.cursor = 'grabbing';
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
             
-            if (!timer || !header) return;
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
             
-            let isDragging = false;
-            let startX, startY, initialX, initialY;
-            
-            header.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                startX = e.clientX;
-                startY = e.clientY;
-                initialX = timer.offsetLeft;
-                initialY = timer.offsetTop;
-            });
-            
-            document.addEventListener('mousemove', (e) => {
-                if (!isDragging) return;
-                
-                const deltaX = e.clientX - startX;
-                const deltaY = e.clientY - startY;
-                
-                timer.style.left = `${initialX + deltaX}px`;
-                timer.style.top = `${initialY + deltaY}px`;
-                timer.style.right = 'auto';
-            });
-            
-            document.addEventListener('mouseup', () => {
-                isDragging = false;
-            });
-        } catch (e) {
-            console.error('Error configurando arrastre:', e);
-        }
+            timer.style.left = `${initialX + deltaX}px`;
+            timer.style.top = `${initialY + deltaY}px`;
+            timer.style.right = 'auto';
+        });
+        
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            header.style.cursor = 'move';
+        });
     }
 
-    // Sistema de Penalizaciones
+    // ========== SISTEMA DE PENALIZACIONES ==========
+    
     initializePenalties() {
-        // Inicializar sistema de penalizaciones
         this.penalties = {
             red: { warnings: 0, penalties: 0 },
             blue: { warnings: 0, penalties: 0 }
         };
-        
-        // Configurar botones
-        document.getElementById('reset-penalties').addEventListener('click', () => {
-            this.resetPenalties();
-        });
-        
-        // Mostrar sección de penalizaciones cuando hay una pelea activa
         this.updatePenaltiesDisplay();
     }
 
@@ -2532,34 +2930,22 @@ class RoundRobinTournament {
     }
 
     resetPenalties() {
-        // Limpiar todas las penalizaciones
         this.penalties = {
             red: { warnings: 0, penalties: 0 },
             blue: { warnings: 0, penalties: 0 }
         };
         this.updatePenaltiesDisplay();
-        
-        // Mostrar confirmación
-        const penaltiesSection = document.getElementById('penalties-section');
-        const originalBg = penaltiesSection.style.backgroundColor;
-        penaltiesSection.style.backgroundColor = '#d4edda';
-        setTimeout(() => {
-            penaltiesSection.style.backgroundColor = originalBg;
-        }, 500);
     }
 
     getPenaltiesForResult() {
-        // Obtener penalizaciones para aplicar al resultado de la pelea
         return {
-            fighter1Penalties: this.penalties.red.penalties,
-            fighter2Penalties: this.penalties.blue.penalties,
-            fighter1Warnings: this.penalties.red.warnings,
-            fighter2Warnings: this.penalties.blue.warnings
+            red: `${this.penalties.red.warnings} adv, ${this.penalties.red.penalties} pts-`,
+            blue: `${this.penalties.blue.warnings} adv, ${this.penalties.blue.penalties} pts-`
         };
     }
 }
 
-// Funciones globales para el sistema de penalizaciones
+// Funciones globales para los botones de penalizaciones
 function adjustWarnings(color, delta) {
     if (tournament && tournament.penalties) {
         tournament.penalties[color].warnings = Math.max(0, tournament.penalties[color].warnings + delta);

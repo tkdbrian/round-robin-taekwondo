@@ -4,14 +4,60 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema Round Robin - Taekwon-Do v2.0</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=2025-10-10-2">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Detector de Compatibilidad -->
+    <script>
+        // Detectar características críticas
+        function checkCompatibility() {
+            var issues = [];
+            
+            // Verificar localStorage
+            try {
+                localStorage.setItem('test', 'test');
+                localStorage.removeItem('test');
+            } catch(e) {
+                issues.push('LocalStorage no disponible (modo incógnito?)');
+            }
+            
+            // Verificar JavaScript ES6 básico
+            try {
+                eval('const test = () => {}; let x = `template`;');
+            } catch(e) {
+                issues.push('Navegador muy antiguo (actualizar recomendado)');
+            }
+            
+            // Verificar resolución
+            if (screen.width < 1024 || screen.height < 768) {
+                issues.push('Resolución baja (' + screen.width + 'x' + screen.height + ') - puede afectar visualización');
+            }
+            
+            // Mostrar advertencias si hay problemas
+            if (issues.length > 0) {
+                var message = '⚠️ ADVERTENCIAS DE COMPATIBILIDAD:\n\n';
+                for (var i = 0; i < issues.length; i++) {
+                    message += '• ' + issues[i] + '\n';
+                }
+                message += '\n¿Continuar de todas formas?\n\n(Recomendado: usar Chrome/Firefox actualizado)';
+                
+                if (!confirm(message)) {
+                    document.body.innerHTML = '<div style="padding:50px;text-align:center;font-family:Arial;"><h2>⚠️ Sistema no compatible</h2><p>Por favor usar un navegador actualizado (Chrome, Firefox, Edge)</p><p>O contactar soporte técnico</p></div>';
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        // Ejecutar verificación al cargar
+        document.addEventListener('DOMContentLoaded', checkCompatibility);
+    </script>
 </head>
 <body>
     <!-- Cronómetro Flotante -->
     <div id="floating-timer" class="floating-timer" style="display: none;">
         <div class="timer-header">
-            <span class="timer-title">⏱️ Cronómetro & Penalizaciones</span>
+            <span class="timer-title">⏱️ Cronómetro</span>
             <button id="timer-minimize" class="timer-minimize">−</button>
         </div>
         <div class="timer-content">
@@ -34,8 +80,8 @@
                 
                 <div class="competitors-penalties-horizontal">
                     <!-- Competidor Rojo -->
-                    <div class="competitor-penalties">
-                        <div class="competitor-header" style="background: #e74c3c; color: white;">
+                    <div class="competitor-penalties red">
+                        <div class="competitor-header red">
                             <span id="red-competitor-name">Rojo</span>
                         </div>
                         <div class="penalty-controls-compact">
@@ -63,8 +109,8 @@
                     </div>
                     
                     <!-- Competidor Azul -->
-                    <div class="competitor-penalties">
-                        <div class="competitor-header" style="background: #3498db; color: white;">
+                    <div class="competitor-penalties blue">
+                        <div class="competitor-header blue">
                             <span id="blue-competitor-name">Azul</span>
                         </div>
                         <div class="penalty-controls-compact">
@@ -467,6 +513,6 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=2025-10-10-1"></script>
 </body>
 </html>
