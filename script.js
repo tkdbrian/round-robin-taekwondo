@@ -1114,17 +1114,29 @@ class RoundRobinTournament {
         
         // Si es sistema de llaves, actualizar brackets
         if (this.competitorCount > 5) {
-            if (this.currentPhase === 'groups' && currentFight.bracket) {
+            if (this.currentPhase === 'groups') {
                 this.updateBracketStatistics();
-                this.resolveBracketIfComplete(currentFight.bracket);
+                
+                // Resolver la llave de la pelea actual si está completada
+                if (currentFight.bracket) {
+                    this.resolveBracketIfComplete(currentFight.bracket);
+                }
+                
+                // IMPORTANTE: Después de resolver una llave, buscar automáticamente la siguiente pelea disponible
+                this.findNextAvailableFight();
             }
 
             this.updateBracketsDisplay();
 
-            // Verificar si se completó la fase de grupos
+            // Verificar si se completó la fase de grupos DESPUÉS de buscar próxima pelea
             if (this.currentPhase === 'groups' && this.checkGroupStageComplete()) {
-                document.getElementById('current-phase').textContent = 'Fase de Grupos Completada';
-                document.getElementById('next-phase').style.display = 'block';
+                // Intentar generar final automáticamente
+                if (this.checkAndGenerateFinalIfReady()) {
+                    return; // Se generó la final, salir
+                } else {
+                    document.getElementById('current-phase').textContent = 'Fase de Grupos Completada';
+                    document.getElementById('next-phase').style.display = 'block';
+                }
             }
         }
         
@@ -2476,6 +2488,37 @@ class RoundRobinTournament {
         this.currentFightIndex = this.fights.length - 1;
     }
 
+    findNextAvailableFight() {
+        // Función que busca la próxima pelea disponible cuando una llave se completa o tiene empates pendientes
+        console.log('🔍 Buscando próxima pelea disponible...');
+        
+        // Buscar la próxima pelea no completada
+        let nextFightIndex = this.currentFightIndex;
+        
+        // Si la pelea actual ya está completada, buscar la siguiente
+        if (this.fights[this.currentFightIndex] && this.fights[this.currentFightIndex].completed) {
+            nextFightIndex = this.fights.findIndex((fight, index) => 
+                index > this.currentFightIndex && !fight.completed
+            );
+        }
+        
+        // Si no encontramos una pelea posterior, buscar desde el principio
+        if (nextFightIndex === -1) {
+            nextFightIndex = this.fights.findIndex(fight => !fight.completed);
+        }
+        
+        // Si encontramos una pelea disponible
+        if (nextFightIndex !== -1 && nextFightIndex !== this.currentFightIndex) {
+            console.log(`✅ Pelea encontrada: índice ${nextFightIndex}`);
+            this.currentFightIndex = nextFightIndex;
+            this.loadCurrentFight();
+            return true;
+        }
+        
+        console.log('ℹ️ No hay más peleas disponibles en esta fase');
+        return false;
+    }
+
     checkAndGenerateFinalIfReady() {
         // Verificar si todas las llaves están completas
         if (!this.checkGroupStageComplete()) {
@@ -2499,6 +2542,9 @@ class RoundRobinTournament {
         // Actualizar displays
         this.updateBracketsDisplay();
         this.updateScheduleDisplay();
+        
+        // IMPORTANTE: Cargar la pelea final recién creada
+        this.loadCurrentFight();
         
         // Mostrar mensaje de transición
         const fighter1 = this.competitors[this.fights[this.currentFightIndex].fighter1Index];
