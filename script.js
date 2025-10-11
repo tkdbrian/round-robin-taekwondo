@@ -362,6 +362,87 @@ class RoundRobinTournament {
         ) || null;
     }
 
+    // Funciones de optimización específicas para brackets
+    optimizeBracketFor3Fighters(fights, bracket) {
+        // Para 3 luchadores en bracket: orden optimizado
+        // Usar el mismo algoritmo general para consistencia
+        return this.optimizeBracketGeneral(fights, bracket);
+    }
+
+    optimizeBracketFor4Fighters(fights, bracket) {
+        // Para 4 luchadores en bracket: usar la misma lógica optimizada
+        // Mapear índices locales del bracket a índices globales
+        const localToGlobal = bracket.competitors.map(comp => 
+            this.competitors.findIndex(c => c.id === comp.id)
+        );
+        
+        // Crear orden optimizado usando índices locales
+        const optimizedOrder = [
+            [0, 1], // A vs B
+            [2, 3], // C vs D  
+            [0, 2], // A vs C
+            [1, 3], // B vs D
+            [0, 3], // A vs D
+            [1, 2]  // B vs C
+        ];
+        
+        const optimized = [];
+        optimizedOrder.forEach(([local1, local2]) => {
+            const global1 = localToGlobal[local1];
+            const global2 = localToGlobal[local2];
+            const fight = fights.find(f => 
+                (f.fighter1Index === global1 && f.fighter2Index === global2) ||
+                (f.fighter1Index === global2 && f.fighter2Index === global1)
+            );
+            if (fight) optimized.push(fight);
+        });
+        
+        return optimized;
+    }
+
+    optimizeBracketGeneral(fights, bracket) {
+        // Algoritmo general para cualquier número de competidores en bracket
+        const optimized = [];
+        const available = [...fights];
+        const lastFightTime = {};
+        
+        // Inicializar tiempos para competidores de este bracket
+        bracket.competitors.forEach(comp => {
+            const globalIndex = this.competitors.findIndex(c => c.id === comp.id);
+            lastFightTime[globalIndex] = -2;
+        });
+        
+        while (available.length > 0) {
+            let bestFight = null;
+            let bestScore = -1;
+            let bestIndex = -1;
+            
+            for (let i = 0; i < available.length; i++) {
+                const fight = available[i];
+                const f1LastFight = lastFightTime[fight.fighter1Index] || -2;
+                const f2LastFight = lastFightTime[fight.fighter2Index] || -2;
+                const currentTime = optimized.length;
+                
+                const score = (currentTime - f1LastFight) + (currentTime - f2LastFight);
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestFight = fight;
+                    bestIndex = i;
+                }
+            }
+            
+            if (bestFight) {
+                optimized.push(bestFight);
+                lastFightTime[bestFight.fighter1Index] = optimized.length - 1;
+                lastFightTime[bestFight.fighter2Index] = optimized.length - 1;
+                available.splice(bestIndex, 1);
+            }
+        }
+        
+        return optimized;
+    }
+
     reorderRemainingFightsFor3(completedFight, fighter1, fighter2, votes) {
         // Determinar quién ganó la pelea
         let winnerIndex, loserIndex;
@@ -2097,14 +2178,18 @@ class RoundRobinTournament {
     generateGroupStage() {
         this.fights = [];
         
-        // Generar peleas para cada llave
+        // Generar peleas optimizadas para cada llave
         this.brackets.forEach(bracket => {
+            console.log(`🔧 Optimizando peleas para ${bracket.name} (${bracket.competitors.length} competidores)`);
+            
+            // Generar todas las combinaciones posibles para este bracket
+            const bracketFights = [];
             for (let i = 0; i < bracket.competitors.length; i++) {
                 for (let j = i + 1; j < bracket.competitors.length; j++) {
                     const fighter1Index = this.competitors.findIndex(c => c.id === bracket.competitors[i].id);
                     const fighter2Index = this.competitors.findIndex(c => c.id === bracket.competitors[j].id);
                     
-                    this.fights.push({
+                    bracketFights.push({
                         fighter1Index: fighter1Index,
                         fighter2Index: fighter2Index,
                         bracket: bracket.id,
@@ -2119,7 +2204,25 @@ class RoundRobinTournament {
                     });
                 }
             }
+            
+            // Aplicar optimización según el tamaño del bracket
+            let optimizedFights;
+            if (bracket.competitors.length === 3) {
+                optimizedFights = this.optimizeBracketFor3Fighters(bracketFights, bracket);
+                console.log(`✅ ${bracket.name}: Aplicada optimización para 3 competidores`);
+            } else if (bracket.competitors.length === 4) {
+                optimizedFights = this.optimizeBracketFor4Fighters(bracketFights, bracket);
+                console.log(`✅ ${bracket.name}: Aplicada optimización para 4 competidores`);
+            } else {
+                optimizedFights = this.optimizeBracketGeneral(bracketFights, bracket);
+                console.log(`✅ ${bracket.name}: Aplicada optimización general para ${bracket.competitors.length} competidores`);
+            }
+            
+            // Agregar las peleas optimizadas al array principal
+            this.fights.push(...optimizedFights);
         });
+        
+        console.log(`🏆 Total de peleas generadas: ${this.fights.length}`);
     }
 
     showBracketsSection() {
