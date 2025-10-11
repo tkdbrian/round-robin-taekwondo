@@ -761,8 +761,21 @@ class RoundRobinTournament {
         })));
         
         if (this.currentFightIndex >= this.fights.length) {
+            console.log('📈 currentFightIndex >= fights.length - Buscando peleas pendientes...');
+            
+            // PRIMERO: Buscar si hay peleas no completadas en cualquier llave
+            const incompleteFight = this.fights.find(fight => !fight.completed);
+            if (incompleteFight) {
+                const newIndex = this.fights.indexOf(incompleteFight);
+                console.log(`🔄 Encontrada pelea pendiente en índice ${newIndex}, llave ${incompleteFight.bracket}`);
+                this.currentFightIndex = newIndex;
+                this.loadCurrentFight();
+                return;
+            }
+            
             // Para sistema de llaves (6-8 competidores), verificar si se puede generar pelea final
             if (this.competitorCount > 5 && this.currentPhase === 'groups') {
+                console.log('🏗️ Verificando si todas las llaves están completas para generar final...');
                 // Verificar si todas las llaves están completas y generar final automáticamente
                 if (this.checkAndGenerateFinalIfReady()) {
                     return; // Se generó la pelea final, continuar
@@ -2557,29 +2570,34 @@ class RoundRobinTournament {
                 const bracketFights = this.fights.filter(f => f.bracket === bracket.id);
                 const completedBracketFights = bracketFights.filter(f => f.completed);
                 console.log(`   ${bracket.name}: ${completedBracketFights.length}/${bracketFights.length} peleas completadas`);
+                
+                // Mostrar peleas específicas
+                bracketFights.forEach((fight, index) => {
+                    const f1 = this.competitors[fight.fighter1Index];
+                    const f2 = this.competitors[fight.fighter2Index];
+                    console.log(`     Pelea ${index + 1}: ${f1?.name} vs ${f2?.name} - ${fight.completed ? 'Completada' : 'PENDIENTE'}`);
+                });
             });
         }
         
-        // Buscar la próxima pelea no completada
-        let nextFightIndex = this.currentFightIndex;
+        // BUSQUEDA AGRESIVA: Buscar cualquier pelea no completada en todo el array
+        console.log('🎯 Buscando CUALQUIER pelea no completada...');
+        let nextFightIndex = -1;
         
-        // Si la pelea actual ya está completada, buscar la siguiente
-        if (this.fights[this.currentFightIndex] && this.fights[this.currentFightIndex].completed) {
-            nextFightIndex = this.fights.findIndex((fight, index) => 
-                index > this.currentFightIndex && !fight.completed
-            );
-        }
-        
-        // Si no encontramos una pelea posterior, buscar desde el principio
-        if (nextFightIndex === -1) {
-            nextFightIndex = this.fights.findIndex(fight => !fight.completed);
+        // Buscar desde el principio
+        for (let i = 0; i < this.fights.length; i++) {
+            if (!this.fights[i].completed) {
+                nextFightIndex = i;
+                console.log(`🔍 Encontrada pelea pendiente en posición ${i}`);
+                break;
+            }
         }
         
         // Si encontramos una pelea disponible
-        if (nextFightIndex !== -1 && nextFightIndex !== this.currentFightIndex) {
+        if (nextFightIndex !== -1) {
             const nextFight = this.fights[nextFightIndex];
             const bracket = this.brackets.find(b => b.id === nextFight.bracket);
-            console.log(`✅ Pelea encontrada: índice ${nextFightIndex} en ${bracket ? bracket.name : 'Sin llave'}`);
+            console.log(`✅ CAMBIANDO A PELEA: índice ${nextFightIndex} en ${bracket ? bracket.name : 'Sin llave'}`);
             this.currentFightIndex = nextFightIndex;
             this.loadCurrentFight();
             return true;
