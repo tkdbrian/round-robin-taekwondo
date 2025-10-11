@@ -1114,6 +1114,8 @@ class RoundRobinTournament {
         
         // Si es sistema de llaves, actualizar brackets
         if (this.competitorCount > 5) {
+            console.log(`🏗️ Sistema de llaves activo - Procesando pelea de llave ${currentFight.bracket}`);
+            
             if (this.currentPhase === 'groups') {
                 this.updateBracketStatistics();
                 
@@ -2407,21 +2409,35 @@ class RoundRobinTournament {
     }
 
     resolveBracketIfComplete(bracketId) {
+        console.log(`🔧 Evaluando si llave ${bracketId} está completa...`);
+        
         if (this.currentPhase !== 'groups') {
+            console.log('❌ No estamos en fase de grupos, saliendo');
             return;
         }
 
         const bracket = this.brackets.find(b => b.id === bracketId);
         if (!bracket) {
+            console.log(`❌ Llave ${bracketId} no encontrada`);
             return;
         }
 
         const pendingNonTiebreaker = this.fights.some(fight =>
             fight.bracket === bracketId && !fight.isTiebreaker && !fight.completed
         );
+        
+        console.log(`📊 Estado de ${bracket.name}:`, {
+            pendingNonTiebreaker,
+            totalFights: this.fights.filter(f => f.bracket === bracketId).length,
+            completedFights: this.fights.filter(f => f.bracket === bracketId && f.completed).length
+        });
+        
         if (pendingNonTiebreaker) {
+            console.log(`⏳ ${bracket.name} aún tiene peleas normales pendientes`);
             return;
         }
+
+        console.log(`✅ ${bracket.name} completada - todas las peleas normales finalizadas`);
 
         bracket.competitors.sort((a, b) => this.compareBracketCompetitors(a, b));
 
@@ -2430,7 +2446,14 @@ class RoundRobinTournament {
             this.haveSameBracketMetrics(competitor, leader)
         );
 
+        console.log(`🏆 Análisis de ganadores en ${bracket.name}:`, {
+            leader: leader.name,
+            tiedGroup: tiedGroup.map(c => c.name),
+            tiedGroupSize: tiedGroup.length
+        });
+
         if (tiedGroup.length === bracket.competitors.length && bracket.competitors.length > 1) {
+            console.log(`🔄 EMPATE TOTAL en ${bracket.name} - reiniciando llave`);
             bracket.completed = false;
             bracket.winner = null;
             this.restartBracket(bracketId);
@@ -2438,6 +2461,7 @@ class RoundRobinTournament {
         }
 
         if (tiedGroup.length > 1) {
+            console.log(`⚡ EMPATE PARCIAL en ${bracket.name} - programando desempate`);
             bracket.completed = false;
             bracket.winner = null;
             if (tiedGroup.length === 2) {
@@ -2448,6 +2472,7 @@ class RoundRobinTournament {
             return;
         }
 
+        console.log(`🎯 ${bracket.name} RESUELTA - Ganador: ${leader.name}`);
         bracket.completed = true;
         bracket.winner = leader;
 
@@ -2457,9 +2482,17 @@ class RoundRobinTournament {
             this.groupWinners.push(leader.id);
         }
 
+        console.log(`📈 Ganadores actuales:`, this.groupWinners.map(id => {
+            const competitor = this.competitors.find(c => c.id === id);
+            return competitor ? competitor.name : `ID:${id}`;
+        }));
+
         if (this.groupWinners.length === this.brackets.length && this.checkGroupStageComplete()) {
+            console.log(`🏁 TODAS LAS LLAVES COMPLETADAS - Preparando para fase final`);
             document.getElementById('current-phase').textContent = 'Fase de Grupos Completada';
             document.getElementById('next-phase').style.display = 'block';
+        } else {
+            console.log(`⏳ Esperando más llaves: ${this.groupWinners.length}/${this.brackets.length} completadas`);
         }
     }
 
@@ -2491,6 +2524,22 @@ class RoundRobinTournament {
     findNextAvailableFight() {
         // Función que busca la próxima pelea disponible cuando una llave se completa o tiene empates pendientes
         console.log('🔍 Buscando próxima pelea disponible...');
+        console.log('📊 Estado actual:', {
+            currentFightIndex: this.currentFightIndex,
+            totalFights: this.fights.length,
+            currentPhase: this.currentPhase,
+            competitorCount: this.competitorCount
+        });
+        
+        // Para sistema de brackets, mostrar estado de cada llave
+        if (this.competitorCount > 5 && this.brackets.length > 0) {
+            console.log('🏗️ Estado de las llaves:');
+            this.brackets.forEach(bracket => {
+                const bracketFights = this.fights.filter(f => f.bracket === bracket.id);
+                const completedBracketFights = bracketFights.filter(f => f.completed);
+                console.log(`   ${bracket.name}: ${completedBracketFights.length}/${bracketFights.length} peleas completadas`);
+            });
+        }
         
         // Buscar la próxima pelea no completada
         let nextFightIndex = this.currentFightIndex;
@@ -2509,7 +2558,9 @@ class RoundRobinTournament {
         
         // Si encontramos una pelea disponible
         if (nextFightIndex !== -1 && nextFightIndex !== this.currentFightIndex) {
-            console.log(`✅ Pelea encontrada: índice ${nextFightIndex}`);
+            const nextFight = this.fights[nextFightIndex];
+            const bracket = this.brackets.find(b => b.id === nextFight.bracket);
+            console.log(`✅ Pelea encontrada: índice ${nextFightIndex} en ${bracket ? bracket.name : 'Sin llave'}`);
             this.currentFightIndex = nextFightIndex;
             this.loadCurrentFight();
             return true;

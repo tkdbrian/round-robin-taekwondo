@@ -2491,6 +2491,22 @@ class RoundRobinTournament {
     findNextAvailableFight() {
         // Función que busca la próxima pelea disponible cuando una llave se completa o tiene empates pendientes
         console.log('🔍 Buscando próxima pelea disponible...');
+        console.log('📊 Estado actual:', {
+            currentFightIndex: this.currentFightIndex,
+            totalFights: this.fights.length,
+            currentPhase: this.currentPhase,
+            competitorCount: this.competitorCount
+        });
+        
+        // Para sistema de brackets, mostrar estado de cada llave
+        if (this.competitorCount > 5 && this.brackets.length > 0) {
+            console.log('🏗️ Estado de las llaves:');
+            this.brackets.forEach(bracket => {
+                const bracketFights = this.fights.filter(f => f.bracket === bracket.id);
+                const completedBracketFights = bracketFights.filter(f => f.completed);
+                console.log(`   ${bracket.name}: ${completedBracketFights.length}/${bracketFights.length} peleas completadas`);
+            });
+        }
         
         // Buscar la próxima pelea no completada
         let nextFightIndex = this.currentFightIndex;
@@ -2509,7 +2525,9 @@ class RoundRobinTournament {
         
         // Si encontramos una pelea disponible
         if (nextFightIndex !== -1 && nextFightIndex !== this.currentFightIndex) {
-            console.log(`✅ Pelea encontrada: índice ${nextFightIndex}`);
+            const nextFight = this.fights[nextFightIndex];
+            const bracket = this.brackets.find(b => b.id === nextFight.bracket);
+            console.log(`✅ Pelea encontrada: índice ${nextFightIndex} en ${bracket ? bracket.name : 'Sin llave'}`);
             this.currentFightIndex = nextFightIndex;
             this.loadCurrentFight();
             return true;
