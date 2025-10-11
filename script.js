@@ -1372,7 +1372,29 @@ class RoundRobinTournament {
         
         if (this.competitorCount > 5) {
             // Sistema de llaves - buscar ganador de la final
-            const finalFight = this.fights.find(f => f.isFinal && f.completed);
+            console.log('🏆 RESULTADOS TORNEO - Iniciando análisis de final...');
+            
+            // APLICAR AUTO-CORRECCIÓN EN RESULTADOS TAMBIÉN
+            let finalFight = this.fights.find(f => f.isFinal && f.completed);
+            
+            if (!finalFight && this.groupWinners.length === 2) {
+                console.log('⚠️ RESULTADOS: No se encuentra final marcada, aplicando auto-corrección...');
+                const winner1Index = this.competitors.findIndex(c => c.id === this.groupWinners[0]);
+                const winner2Index = this.competitors.findIndex(c => c.id === this.groupWinners[1]);
+                
+                const existingFight = this.fights.find(f => 
+                    f.completed &&
+                    ((f.fighter1Index === winner1Index && f.fighter2Index === winner2Index) ||
+                     (f.fighter1Index === winner2Index && f.fighter2Index === winner1Index))
+                );
+                
+                if (existingFight) {
+                    console.log('✅ RESULTADOS: Encontrada pelea entre ganadores, marcando como final');
+                    existingFight.isFinal = true;
+                    finalFight = existingFight;
+                }
+            }
+            
             let championMessage = '';
             
             if (finalFight) {
@@ -1389,16 +1411,26 @@ class RoundRobinTournament {
                     else if (decision === 'tie') votes.tie++;
                 });
                 
+                console.log('🏆 RESULTADOS - Análisis de votos final:', {
+                    fighter1: `${this.competitors[finalFight.fighter1Index].name} (${votes.fighter1} votos)`,
+                    fighter2: `${this.competitors[finalFight.fighter2Index].name} (${votes.fighter2} votos)`,
+                    empates: votes.tie,
+                    judgeVotes: finalFight.judgeVotes
+                });
+                
                 let champion;
                 if (votes.fighter1 > votes.fighter2) {
                     champion = this.competitors[finalFight.fighter1Index];
+                    console.log(`✅ RESULTADOS - CAMPEÓN: ${champion.name} (fighter1 ganó ${votes.fighter1} vs ${votes.fighter2})`);
                 } else if (votes.fighter2 > votes.fighter1) {
                     champion = this.competitors[finalFight.fighter2Index];
+                    console.log(`✅ RESULTADOS - CAMPEÓN: ${champion.name} (fighter2 ganó ${votes.fighter2} vs ${votes.fighter1})`);
                 } else {
                     // En caso de empate en la final, gana quien tenga más puntos de jueces en la final
                     const fighter1 = this.competitors[finalFight.fighter1Index];
                     const fighter2 = this.competitors[finalFight.fighter2Index];
                     champion = votes.fighter1 >= votes.fighter2 ? fighter1 : fighter2;
+                    console.log(`⚖️ RESULTADOS - EMPATE EN VOTOS: Campeón por criterio: ${champion.name}`);
                 }
                 
                 championMessage = `
@@ -1647,6 +1679,39 @@ class RoundRobinTournament {
 
     generateBracketPodium() {
         // Para sistema de brackets, mostrar ganadores de cada llave
+        console.log('🏆 GENERANDO PODIUM - Iniciando análisis...');
+        
+        // APLICAR AUTO-CORRECCIÓN AQUÍ TAMBIÉN
+        if (this.competitorCount > 5 && this.groupWinners.length === 2) {
+            let finalFight = this.fights.find(f => f.isFinal && f.completed);
+            
+            if (!finalFight) {
+                console.log('⚠️ PODIUM: No se encuentra final marcada, aplicando auto-corrección...');
+                // Buscar pelea entre ganadores de llaves
+                const winner1Index = this.competitors.findIndex(c => c.id === this.groupWinners[0]);
+                const winner2Index = this.competitors.findIndex(c => c.id === this.groupWinners[1]);
+                
+                const existingFight = this.fights.find(f => 
+                    f.completed &&
+                    ((f.fighter1Index === winner1Index && f.fighter2Index === winner2Index) ||
+                     (f.fighter1Index === winner2Index && f.fighter2Index === winner1Index))
+                );
+                
+                if (existingFight) {
+                    console.log('✅ PODIUM: Encontrada pelea entre ganadores, marcando como final');
+                    existingFight.isFinal = true;
+                    finalFight = existingFight;
+                }
+            }
+            
+            console.log('🔍 PODIUM - Estado de final:', {
+                finalFightFound: !!finalFight,
+                finalCompleted: finalFight ? finalFight.completed : false,
+                finalResult: finalFight ? finalFight.result : null,
+                groupWinners: this.groupWinners.map(id => this.competitors.find(c => c.id === id)?.name)
+            });
+        }
+        
         const finalFight = this.fights.find(f => f.isFinal && f.completed);
         
         if (finalFight) {
@@ -1658,13 +1723,22 @@ class RoundRobinTournament {
                 else if (decision === 'tie') votes.tie++;
             });
 
+            console.log('🏆 PODIUM - Análisis de votos final:', {
+                fighter1: `${this.competitors[finalFight.fighter1Index].name} (${votes.fighter1} votos)`,
+                fighter2: `${this.competitors[finalFight.fighter2Index].name} (${votes.fighter2} votos)`,
+                empates: votes.tie,
+                judgeVotes: finalFight.judgeVotes
+            });
+
             let champion, runnerUp;
             if (votes.fighter1 > votes.fighter2) {
                 champion = this.competitors[finalFight.fighter1Index];
                 runnerUp = this.competitors[finalFight.fighter2Index];
+                console.log(`✅ PODIUM - CAMPEÓN: ${champion.name} (fighter1 ganó ${votes.fighter1} vs ${votes.fighter2})`);
             } else if (votes.fighter2 > votes.fighter1) {
                 champion = this.competitors[finalFight.fighter2Index];
                 runnerUp = this.competitors[finalFight.fighter1Index];
+                console.log(`✅ PODIUM - CAMPEÓN: ${champion.name} (fighter2 ganó ${votes.fighter2} vs ${votes.fighter1})`);
             } else {
                 // En caso de empate, usar puntos de jueces de la final
                 champion = votes.fighter1 >= votes.fighter2 ? 
@@ -1673,6 +1747,7 @@ class RoundRobinTournament {
                 runnerUp = champion === this.competitors[finalFight.fighter1Index] ? 
                     this.competitors[finalFight.fighter2Index] : 
                     this.competitors[finalFight.fighter1Index];
+                console.log(`⚖️ PODIUM - EMPATE EN VOTOS: Campeón por criterio: ${champion.name}`);
             }
 
             return `
