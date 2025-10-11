@@ -1382,13 +1382,16 @@ class RoundRobinTournament {
                 const winner1Index = this.competitors.findIndex(c => c.id === this.groupWinners[0]);
                 const winner2Index = this.competitors.findIndex(c => c.id === this.groupWinners[1]);
                 
-                const existingFight = this.fights.find(f => 
+                // Buscar TODAS las peleas entre ganadores (incluye desempates)
+                const fightsBetweenWinners = this.fights.filter(f => 
                     f.completed &&
                     ((f.fighter1Index === winner1Index && f.fighter2Index === winner2Index) ||
                      (f.fighter1Index === winner2Index && f.fighter2Index === winner1Index))
                 );
                 
-                if (existingFight) {
+                if (fightsBetweenWinners.length > 0) {
+                    // Usar la última pelea (puede ser un desempate)
+                    const existingFight = fightsBetweenWinners[fightsBetweenWinners.length - 1];
                     console.log('✅ RESULTADOS: Encontrada pelea entre ganadores, marcando como final');
                     existingFight.isFinal = true;
                     finalFight = existingFight;
@@ -1691,13 +1694,16 @@ class RoundRobinTournament {
                 const winner1Index = this.competitors.findIndex(c => c.id === this.groupWinners[0]);
                 const winner2Index = this.competitors.findIndex(c => c.id === this.groupWinners[1]);
                 
-                const existingFight = this.fights.find(f => 
+                // Buscar TODAS las peleas entre ganadores (incluye desempates)
+                const fightsBetweenWinners = this.fights.filter(f => 
                     f.completed &&
                     ((f.fighter1Index === winner1Index && f.fighter2Index === winner2Index) ||
                      (f.fighter1Index === winner2Index && f.fighter2Index === winner1Index))
                 );
                 
-                if (existingFight) {
+                if (fightsBetweenWinners.length > 0) {
+                    // Usar la última pelea (puede ser un desempate)
+                    const existingFight = fightsBetweenWinners[fightsBetweenWinners.length - 1];
                     console.log('✅ PODIUM: Encontrada pelea entre ganadores, marcando como final');
                     existingFight.isFinal = true;
                     finalFight = existingFight;
@@ -2225,18 +2231,36 @@ class RoundRobinTournament {
             const finalFight = this.fights.find(f => f.isFinal);
             if (!finalFight) {
                 console.log('🔧 AUTO-CORRECCIÓN: Detectando final faltante y corrigiendo...');
+                console.log('🔍 Ganadores de llaves:', this.groupWinners.map(id => 
+                    this.competitors.find(c => c.id === id)?.name
+                ));
+                
                 // Buscar si existe una pelea entre los ganadores
                 const winner1Index = this.competitors.findIndex(c => c.id === this.groupWinners[0]);
                 const winner2Index = this.competitors.findIndex(c => c.id === this.groupWinners[1]);
                 
-                const existingFight = this.fights.find(f => 
-                    (f.fighter1Index === winner1Index && f.fighter2Index === winner2Index) ||
-                    (f.fighter1Index === winner2Index && f.fighter2Index === winner1Index)
+                console.log('🔍 Índices:', { winner1Index, winner2Index });
+                
+                // Buscar TODAS las peleas entre estos ganadores (incluye desempates)
+                const fightsBetweenWinners = this.fights.filter(f => 
+                    f.completed &&
+                    ((f.fighter1Index === winner1Index && f.fighter2Index === winner2Index) ||
+                     (f.fighter1Index === winner2Index && f.fighter2Index === winner1Index))
                 );
                 
-                if (existingFight) {
-                    existingFight.isFinal = true;
-                    console.log('✅ AUTO-CORRECCIÓN: Pelea entre ganadores marcada como final');
+                console.log('🔍 Peleas encontradas:', fightsBetweenWinners.length);
+                
+                if (fightsBetweenWinners.length > 0) {
+                    // Usar la última pelea (puede ser un desempate)
+                    const finalToMark = fightsBetweenWinners[fightsBetweenWinners.length - 1];
+                    finalToMark.isFinal = true;
+                    console.log('✅ AUTO-CORRECCIÓN: Pelea entre ganadores marcada como final:', {
+                        fighter1: this.competitors[finalToMark.fighter1Index]?.name,
+                        fighter2: this.competitors[finalToMark.fighter2Index]?.name,
+                        result: finalToMark.result
+                    });
+                } else {
+                    console.log('❌ No se encontraron peleas entre ganadores');
                 }
             }
         }
@@ -2353,12 +2377,21 @@ class RoundRobinTournament {
                 const winner1Index = this.competitors.findIndex(c => c.id === this.groupWinners[0]);
                 const winner2Index = this.competitors.findIndex(c => c.id === this.groupWinners[1]);
                 
-                const existingFinalFight = this.fights.find(f => 
-                    (f.fighter1Index === winner1Index && f.fighter2Index === winner2Index) ||
-                    (f.fighter1Index === winner2Index && f.fighter2Index === winner1Index)
+                console.log('🔍 DISPLAY - Buscando final entre ganadores:', {
+                    winner1: this.competitors[winner1Index]?.name,
+                    winner2: this.competitors[winner2Index]?.name
+                });
+                
+                // Buscar TODAS las peleas entre ganadores (incluye desempates)
+                const fightsBetweenWinners = this.fights.filter(f => 
+                    f.completed &&
+                    ((f.fighter1Index === winner1Index && f.fighter2Index === winner2Index) ||
+                     (f.fighter1Index === winner2Index && f.fighter2Index === winner1Index))
                 );
                 
-                if (existingFinalFight && existingFinalFight.completed) {
+                if (fightsBetweenWinners.length > 0) {
+                    // Usar la última pelea (puede ser un desempate)
+                    const existingFinalFight = fightsBetweenWinners[fightsBetweenWinners.length - 1];
                     console.log('✅ ENCONTRADA pelea entre ganadores de llaves - marcando como final');
                     // Marcar esta pelea como la final
                     existingFinalFight.isFinal = true;
