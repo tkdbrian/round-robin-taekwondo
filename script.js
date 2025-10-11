@@ -2145,6 +2145,27 @@ class RoundRobinTournament {
     }
 
     updateBracketsDisplay() {
+        // VERIFICACIÓN AUTOMÁTICA DE FINAL FALTANTE
+        if (this.competitorCount > 5 && this.groupWinners.length === 2) {
+            const finalFight = this.fights.find(f => f.isFinal);
+            if (!finalFight) {
+                console.log('🔧 AUTO-CORRECCIÓN: Detectando final faltante y corrigiendo...');
+                // Buscar si existe una pelea entre los ganadores
+                const winner1Index = this.competitors.findIndex(c => c.id === this.groupWinners[0]);
+                const winner2Index = this.competitors.findIndex(c => c.id === this.groupWinners[1]);
+                
+                const existingFight = this.fights.find(f => 
+                    (f.fighter1Index === winner1Index && f.fighter2Index === winner2Index) ||
+                    (f.fighter1Index === winner2Index && f.fighter2Index === winner1Index)
+                );
+                
+                if (existingFight) {
+                    existingFight.isFinal = true;
+                    console.log('✅ AUTO-CORRECCIÓN: Pelea entre ganadores marcada como final');
+                }
+            }
+        }
+        
         // Primero actualizar las estadísticas de todos los competidores
         this.updateBracketStatistics();
         
@@ -2202,6 +2223,20 @@ class RoundRobinTournament {
             let finalResult = '';
             let champion = null;
             
+            console.log('🔍 DEBUG FINAL - Estado de final:', {
+                finalFightFound: !!finalFight,
+                finalCompleted: finalFight ? finalFight.completed : false,
+                groupWinners: this.groupWinners,
+                currentPhase: this.currentPhase,
+                totalFights: this.fights.length,
+                finalDetails: finalFight ? {
+                    fighter1: this.competitors[finalFight.fighter1Index]?.name,
+                    fighter2: this.competitors[finalFight.fighter2Index]?.name,
+                    result: finalFight.result,
+                    isFinal: finalFight.isFinal
+                } : null
+            });
+            
             if (finalFight && finalFight.completed) {
                 // La final ya se jugó - determinar ganador por votos de jueces
                 const votes = { fighter1: 0, fighter2: 0, tie: 0 };
@@ -2231,6 +2266,50 @@ class RoundRobinTournament {
 
                 if (champion) {
                     finalResult = `<div class="champion-announcement">🏆 CAMPEÓN: <strong>${champion.name}</strong></div>`;
+                }
+            }
+            
+            // SI NO HAY FINAL DETECTADA PERO SÍ HAY GANADORES, INTENTAR CORREGIR
+            if (!finalFight && this.groupWinners.length === 2) {
+                console.log('⚠️ PROBLEMA DETECTADO: Hay ganadores de llaves pero no hay final generada');
+                console.log('🔧 Intentando detectar si la final ya se jugó...');
+                
+                // Buscar si existe una pelea entre los ganadores de las llaves
+                const winner1Index = this.competitors.findIndex(c => c.id === this.groupWinners[0]);
+                const winner2Index = this.competitors.findIndex(c => c.id === this.groupWinners[1]);
+                
+                const existingFinalFight = this.fights.find(f => 
+                    (f.fighter1Index === winner1Index && f.fighter2Index === winner2Index) ||
+                    (f.fighter1Index === winner2Index && f.fighter2Index === winner1Index)
+                );
+                
+                if (existingFinalFight && existingFinalFight.completed) {
+                    console.log('✅ ENCONTRADA pelea entre ganadores de llaves - marcando como final');
+                    // Marcar esta pelea como la final
+                    existingFinalFight.isFinal = true;
+                    
+                    // Determinar ganador por votos de jueces
+                    const votes = { fighter1: 0, fighter2: 0, tie: 0 };
+                    Object.values(existingFinalFight.judgeVotes).forEach(decision => {
+                        if (decision === '1') votes.fighter1++;
+                        else if (decision === '2') votes.fighter2++;
+                        else if (decision === 'tie') votes.tie++;
+                    });
+
+                    if (votes.fighter1 > votes.fighter2) {
+                        champion = this.competitors[existingFinalFight.fighter1Index];
+                    } else if (votes.fighter2 > votes.fighter1) {
+                        champion = this.competitors[existingFinalFight.fighter2Index];
+                    }
+
+                    if (champion) {
+                        finalResult = `<div class="champion-announcement">🏆 CAMPEÓN: <strong>${champion.name}</strong></div>`;
+                        console.log(`🏆 CAMPEÓN DETERMINADO: ${champion.name}`);
+                    }
+                } else if (!existingFinalFight) {
+                    console.log('🔧 Generando final faltante...');
+                    this.generateFinalFight();
+                    finalResult = `<div class="champion-announcement">⚡ Final generada - Pendiente de jugar</div>`;
                 }
             }
             
